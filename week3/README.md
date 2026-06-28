@@ -15,3 +15,6 @@ POST /rag         - full RAG (retrieve + generate)
 POST /rag/stream  - streaming RAG
 POST /chat        - direct LLM (no RAG)
 POST /chat/stream - streaming direct LLM
+
+## Frontend
+React chat UI in `chat-ui/` — streams answers token by token with source citations.
