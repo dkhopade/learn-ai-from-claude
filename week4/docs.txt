@@ -1,0 +1,35 @@
+Oracle Container Engine for Kubernetes (OKE) is a managed Kubernetes service on OCI that lets you deploy containerized applications without managing control plane infrastructure.
+
+A Kubernetes namespace provides a mechanism for isolating groups of resources within a single cluster, commonly used to separate dev, staging, and production environments.
+
+A Kubernetes pod is the smallest deployable unit and can contain one or more containers that share network and storage resources.
+
+Helm is the package manager for Kubernetes that uses charts to define, install, and upgrade complex Kubernetes applications.
+
+OCI Object Storage is a scalable and durable cloud storage service that stores unstructured data such as images, videos, and backups as objects.
+
+A microservice architecture splits an application into small independent services that communicate over APIs, making each service independently deployable and scalable.
+
+FastAPI is a modern Python web framework for building APIs with automatic Swagger documentation, async support, and Pydantic data validation.
+
+RAG stands for Retrieval Augmented Generation — it combines a retrieval system that finds relevant documents with a language model that generates answers based on those documents.
+
+A vector database stores high-dimensional embeddings and enables semantic similarity search, returning results based on meaning rather than exact keyword matches.
+
+Qdrant is an open-source vector database written in Rust that supports filtering, payload storage, and multiple distance metrics for similarity search.
+
+CI/CD stands for Continuous Integration and Continuous Delivery — a practice where code changes are automatically tested and deployed using pipelines defined in tools like GitHub Actions.
+
+OCI Generative AI is a managed service on Oracle Cloud Infrastructure that provides access to large language models for text generation, summarization, and embedding tasks.
+
+An embedding is a numerical representation of text as a vector of floating point numbers, where semantically similar texts produce vectors that are mathematically close together.
+
+Kubernetes deployments manage the rollout and scaling of pods, ensuring the desired number of replicas are always running and handling rolling updates with zero downtime.
+
+A service mesh like Istio manages service-to-service communication in a Kubernetes cluster, providing traffic management, observability, and mutual TLS security.
+
+GitHub Actions is a CI/CD platform that automates build, test, and deployment workflows triggered by events in a GitHub repository.
+
+Python virtual environments isolate project dependencies so different projects can use different package versions without conflicts.
+
+OCI Vault is a managed service for storing and managing encryption keys and secrets, commonly used to store API keys and database passwords securely.
