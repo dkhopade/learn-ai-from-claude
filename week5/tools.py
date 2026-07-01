@@ -1,14 +1,24 @@
 import httpx
+import os
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-qdrant = QdrantClient(":memory:")
+# qdrant = QdrantClient(":memory:")
+
+QDRANT_URL = os.getenv("QDRANT_URL", "")
+
+if QDRANT_URL:
+    # cluster: connect to the real Qdrant service
+    qdrant = QdrantClient(url=QDRANT_URL)
+else:
+    # local dev: in-memory, no external Qdrant needed
+    qdrant = QdrantClient(":memory:")
 
 def init_knowledge_base():
-    qdrant.create_collection(
+    qdrant.recreate_collection(
         collection_name="docs",
         vectors_config=VectorParams(size=384, distance=Distance.COSINE)
     )

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-const API = "http://localhost:8000";
+const API = process.env.REACT_APP_API_URL || "/api"; //set this to `const API = "http://localhost:8000";` when running locally
 
 export default function App() {
   const [messages, setMessages] = useState([]);

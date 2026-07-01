@@ -30,3 +30,15 @@ variable "tenancy_ocid" {
   description = "OCID of the tenancy (root compartment) — required for IAM"
   type        = string
 }
+
+variable "ocir_auth_token" {
+  description = "OCIR auth token for image pulls (sensitive)"
+  type        = string
+  sensitive   = true
+}
+
+variable "ocir_username" {
+  description = "OCIR username (email or federated username)"
+  type        = string
+  default     = "deepak.khopade@oracle.com"
+}

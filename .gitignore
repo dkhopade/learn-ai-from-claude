@@ -13,3 +13,6 @@ venv/
 .vscode/
 .idea/
 node_modules/
+
+#security
+*.key

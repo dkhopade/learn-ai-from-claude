@@ -1,0 +1,96 @@
+name: Build and Deploy to OKE
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'week5/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:   # allows manual trigger from the Actions tab
+
+env:
+  # --- FILL THESE IN ---
+  OCIR_NAMESPACE: idb8ulrkkzqx     # from `oci os ns get`
+  CLUSTER_OCID: ocid1.cluster.oc1.iad.aaaaaaaa3xxtow7fsvutcxnp75ortqca27ad54yikhcdialokcp5ky6yiepa%  # from `terraform output cluster_id`
+  # ---------------------
+  OCIR_REGION_KEY: iad                        # iad = Ashburn
+  OCIR_REGISTRY: iad.ocir.io
+  BACKEND_REPO: learn-ai/ai-backend
+  FRONTEND_REPO: learn-ai/ai-frontend
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to OCIR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.OCIR_REGISTRY }}
+          username: ${{ env.OCIR_NAMESPACE }}/${{ secrets.OCIR_USERNAME }}
+          password: ${{ secrets.OCIR_AUTH_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./week5
+          file: ./week5/backend.Dockerfile
+          push: true
+          tags: |
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.BACKEND_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.BACKEND_REPO }}:latest
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./week5
+          file: ./week5/frontend.Dockerfile
+          push: true
+          tags: |
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.FRONTEND_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.FRONTEND_REPO }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up OCI CLI
+        uses: oracle-actions/configure-oci-credentials@v1.3.1
+        with:
+          user: ${{ secrets.OCI_USER_OCID }}
+          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+          tenancy: ${{ secrets.OCI_TENANCY_OCID }}
+          region: ${{ secrets.OCI_REGION }}
+          private_key: ${{ secrets.OCI_PRIVATE_KEY }}
+
+      - name: Configure kubectl for OKE
+        run: |
+          mkdir -p $HOME/.kube
+          oci ce cluster create-kubeconfig \
+            --cluster-id ${{ env.CLUSTER_OCID }} \
+            --file $HOME/.kube/config \
+            --region ${{ secrets.OCI_REGION }} \
+            --token-version 2.0.0 \
+            --kube-endpoint PUBLIC_ENDPOINT
+          chmod 600 $HOME/.kube/config
+
+      - name: Update image tags in manifests
+        run: |
+          cd week5/k8s
+          sed -i "s|IMAGE_BACKEND|${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.BACKEND_REPO }}:${{ env.IMAGE_TAG }}|g" backend.yaml
+          sed -i "s|IMAGE_FRONTEND|${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.FRONTEND_REPO }}:${{ env.IMAGE_TAG }}|g" frontend.yaml
+
+      - name: Deploy to OKE
+        run: |
+          cd week5/k8s
+          kubectl apply -f qdrant.yaml
+          kubectl apply -f backend.yaml
+          kubectl apply -f frontend.yaml
+          kubectl rollout status deployment/ai-backend --timeout=180s
+          kubectl rollout status deployment/ai-frontend --timeout=180s
