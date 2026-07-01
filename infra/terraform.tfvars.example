@@ -1,0 +1,4 @@
+region           = "us-phoenix-1"
+compartment_ocid = "ocid1.compartment.oc1..xxxxxxxx"
+project_name     = "learn-ai"
+enable_gpu       = false
