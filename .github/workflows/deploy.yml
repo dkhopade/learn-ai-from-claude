@@ -11,7 +11,7 @@ on:
 env:
   # --- FILL THESE IN ---
   OCIR_NAMESPACE: idb8ulrkkzqx     # from `oci os ns get`
-  CLUSTER_OCID: ocid1.cluster.oc1.iad.aaaaaaaa3xxtow7fsvutcxnp75ortqca27ad54yikhcdialokcp5ky6yiepa%  # from `terraform output cluster_id`
+  CLUSTER_OCID: ocid1.cluster.oc1.iad.aaaaaaaa3xxtow7fsvutcxnp75ortqca27ad54yikhcdialokcp5ky6yiepa  # from `terraform output cluster_id`
   # ---------------------
   OCIR_REGION_KEY: iad                        # iad = Ashburn
   OCIR_REGISTRY: iad.ocir.io
@@ -60,14 +60,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up OCI CLI
-        uses: oracle-actions/configure-oci-credentials@v1.3.1
-        with:
-          user: ${{ secrets.OCI_USER_OCID }}
-          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          tenancy: ${{ secrets.OCI_TENANCY_OCID }}
-          region: ${{ secrets.OCI_REGION }}
-          private_key: ${{ secrets.OCI_PRIVATE_KEY }}
+      - name: Install and configure OCI CLI
+        run: |
+          # install the OCI CLI
+          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh -o install.sh
+          chmod +x install.sh
+          ./install.sh --accept-all-defaults
+          echo "$HOME/bin" >> $GITHUB_PATH
+          export PATH="$HOME/bin:$PATH"
+
+          # write the OCI config and private key from secrets
+          mkdir -p $HOME/.oci
+          cat > $HOME/.oci/config << EOF
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=$HOME/.oci/key.pem
+          EOF
+
+          # write the private key
+          cat > $HOME/.oci/key.pem << 'EOF'
+          ${{ secrets.OCI_PRIVATE_KEY }}
+          EOF
+
+          chmod 600 $HOME/.oci/config $HOME/.oci/key.pem
 
       - name: Configure kubectl for OKE
         run: |
