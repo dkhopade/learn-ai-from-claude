@@ -42,3 +42,9 @@ variable "ocir_username" {
   type        = string
   default     = "deepak.khopade@oracle.com"
 }
+
+variable "ocir_region_key" {
+  description = "OCIR region key (e.g. iad for Ashburn, phx for Phoenix)"
+  type        = string
+  default     = "iad"
+}

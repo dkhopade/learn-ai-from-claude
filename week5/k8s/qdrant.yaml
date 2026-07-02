@@ -6,6 +6,8 @@ metadata:
     app: qdrant
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: qdrant
@@ -16,7 +18,7 @@ spec:
     spec:
       containers:
         - name: qdrant
-          image: qdrant/qdrant:latest
+          image: docker.io/qdrant/qdrant:latest
           ports:
             - containerPort: 6333  # REST API
             - containerPort: 6334  # gRPC

@@ -13,7 +13,7 @@ resource "kubernetes_secret_v1" "ocir" {
   data = {
     ".dockerconfigjson" = jsonencode({
       auths = {
-        "${var.region}.ocir.io" = {
+        "${var.ocir_region_key}.ocir.io" = {
           username = "${data.oci_objectstorage_namespace.ns.namespace}/${var.ocir_username}"
           password = var.ocir_auth_token
           auth     = base64encode("${data.oci_objectstorage_namespace.ns.namespace}/${var.ocir_username}:${var.ocir_auth_token}")
