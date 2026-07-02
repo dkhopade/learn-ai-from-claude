@@ -43,7 +43,7 @@ class RagRequest(BaseModel):
 class AgentRequest(BaseModel):
     question: str
     session_id: str = "default"
-    model: str = "llama3.1:8b"
+    model: str | None = None
 
 sessions = {}
 

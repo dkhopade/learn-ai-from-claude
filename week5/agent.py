@@ -54,7 +54,10 @@ def _call_model(messages, model):
             "stream": False,
         }
         resp = httpx.post(url, json=payload, timeout=120)
-        return resp.json()["choices"][0]["message"]
+        data = resp.json()
+        if "choices" not in data:
+            raise RuntimeError(f"vLLM returned no choices: {data}")
+        return data["choices"][0]["message"]
     else:  # ollama
         response = ollama.chat(model=model, messages=messages, tools=TOOLS)
         return response["message"]
