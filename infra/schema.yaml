@@ -1,0 +1,90 @@
+title: "Learn AI from Claude — OKE + vLLM Stack"
+description: "Deploys a full RAG + agent AI application on OKE with optional GPU-backed vLLM inference."
+schemaVersion: 1.1.0
+version: "20260101"
+
+locale: "en"
+
+variableGroups:
+  - title: "Core Configuration"
+    variables:
+      - compartment_ocid
+      - region
+      - project_name
+
+  - title: "Identity (required for IAM)"
+    variables:
+      - tenancy_ocid
+
+  - title: "Kubernetes"
+    variables:
+      - kubernetes_version
+
+  - title: "GPU (costs apply when enabled)"
+    variables:
+      - enable_gpu
+      - ocir_region_key
+
+  - title: "Container Registry Auth"
+    variables:
+      - ocir_username
+      - ocir_auth_token
+
+variables:
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment"
+    description: "Compartment to deploy all resources into"
+    required: true
+
+  tenancy_ocid:
+    type: string
+    title: "Tenancy OCID"
+    description: "Your tenancy root OCID (needed for IAM policies)"
+    required: true
+
+  region:
+    type: oci:identity:region:name
+    title: "Region"
+    description: "Region to deploy into"
+    required: true
+
+  project_name:
+    type: string
+    title: "Project Name Prefix"
+    description: "Short prefix for all resource names"
+    default: "learn-ai"
+    required: true
+
+  kubernetes_version:
+    type: string
+    title: "Kubernetes Version"
+    description: "OKE Kubernetes version (must be supported in your region)"
+    default: "v1.35.2"
+    required: true
+
+  enable_gpu:
+    type: boolean
+    title: "Enable GPU Nodepool"
+    description: "Provisions an A10 GPU node for vLLM. WARNING: bills hourly (~$2-3/hr). Leave off unless testing inference."
+    default: false
+
+  ocir_region_key:
+    type: string
+    title: "OCIR Region Key"
+    description: "Short region key for the registry (e.g. iad for Ashburn, phx for Phoenix)"
+    default: "iad"
+    required: true
+
+  ocir_username:
+    type: string
+    title: "OCIR Username"
+    description: "Your OCI username (email or federated username) for image pulls"
+    required: true
+
+  ocir_auth_token:
+    type: password
+    title: "OCIR Auth Token"
+    description: "Auth token for pulling private images from OCIR"
+    required: true
+    sensitive: true
