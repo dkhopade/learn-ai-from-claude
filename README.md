@@ -9,14 +9,7 @@ A hands-on journey from a local FastAPI + LLM script to a full, cloud-native, GP
 A RAG (Retrieval-Augmented Generation) and agent application with a React chat UI, deployed on Oracle Container Engine for Kubernetes (OKE), serving an open LLM (Qwen2.5-7B) on an A10 GPU via vLLM. All infrastructure is Terraform-managed and one-click deployable via OCI Resource Manager.
 
 ## Architecture
-Browser
-│
-▼
-OCI Load Balancer ──► React frontend (nginx) ──► FastAPI backend
-│
-┌─────────────────────────────┼─────────────────────────┐
-▼                             ▼                           ▼
-Qdrant (vectors)          vLLM (Qwen on A10 GPU)      Tools (weather, etc.)
+![Architecture](docs/architecture.svg)
 
 Request flow: a question is embedded, matched against documents in Qdrant, injected as context into a prompt, and answered by the LLM — grounded in your own data with sources cited. Agent mode adds autonomous tool-calling (time, calculator, live weather, knowledge-base search).
 
