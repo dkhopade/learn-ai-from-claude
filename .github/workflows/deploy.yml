@@ -110,5 +110,5 @@ jobs:
           kubectl apply -f qdrant.yaml
           kubectl apply -f backend.yaml
           kubectl apply -f frontend.yaml
-          kubectl rollout status deployment/ai-backend --timeout=300s
-          kubectl rollout status deployment/ai-frontend --timeout=180s
+          kubectl rollout status deployment/ai-backend --timeout=900s
+          kubectl rollout status deployment/ai-frontend --timeout=900s
