@@ -1,5 +1,6 @@
 import httpx
 import os
+import time
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
@@ -17,7 +18,22 @@ else:
     # local dev: in-memory, no external Qdrant needed
     qdrant = QdrantClient(":memory:")
 
-def init_knowledge_base():
+def init_knowledge_base(max_retries=10, retry_delay=6):
+    # wait for Qdrant to be reachable before proceeding
+    for attempt in range(1, max_retries + 1):
+        try:
+            # a lightweight call to check Qdrant is up
+            qdrant.get_collections()
+            break
+        except Exception as e:
+            if attempt == max_retries:
+                raise RuntimeError(
+                    f"Qdrant not reachable after {max_retries} attempts: {e}"
+                )
+            print(f"Qdrant not ready (attempt {attempt}/{max_retries}), "
+                  f"retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+
     qdrant.recreate_collection(
         collection_name="docs",
         vectors_config=VectorParams(size=384, distance=Distance.COSINE)
