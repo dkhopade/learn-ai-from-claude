@@ -464,6 +464,7 @@
       <a class="nav-link" href="#stack"><span class="nav-num">→</span> Stack &amp; endpoints</a>
       <a class="nav-link" href="#gotchas"><span class="nav-num">!</span> Gotchas &amp; fixes</a>
       <a class="nav-link" href="#teardown"><span class="nav-num">→</span> Teardown</a>
+      <a class="nav-link" href="#roadmap"><span class="nav-num">»</span> What's next (Day 2)</a>
     </div>
   </aside>
 
@@ -474,6 +475,7 @@
       <!-- HERO -->
       <div class="hero" id="intro">
         <div class="eyebrow">A hands-on build journal</div>
+        <div style="font-size:15px; margin-bottom:16px;"><span style="font-weight:600;">Deepak Khopade</span> · <a href="https://github.com/dkhopade" style="color:var(--accent); border-bottom:1px solid var(--accent-soft);">github.com/dkhopade</a></div>
         <h1>From a local script to a GPU-served AI app on Kubernetes.</h1>
         <p>I spent most of my career as a full-stack software engineer, then moved into sales solutions engineering. This project was how I rebuilt the end-to-end muscle — system design through deployment — for the AI era. Every layer here I built and debugged myself.</p>
         <div class="hero-meta">
@@ -493,6 +495,14 @@
         <div class="callout">
           <span class="clabel">The throughline</span>
           The old mental model — data layer → business logic → APIs → frontend — maps almost perfectly onto AI systems. The vector database is the new relational DB, the LLM call is a new kind of service dependency, and the React frontend barely changes. What's new is embeddings, retrieval, and GPU serving. Everything else was already in my hands.
+        </div>
+
+        <h3>Two things I specifically wanted to prove out</h3>
+        <p><strong>1. What actually makes an agent an agent.</strong> "Agent" is an overloaded word — most things called agents are a chatbot with a system prompt. I wanted to build the real thing and understand the mechanics: a model that reasons about a request, <em>decides on its own</em> which tool to call, executes it, reads the result, and loops until it can answer — while carrying memory across turns so context accumulates. That means genuine function-calling wired to real tools (a live weather API, a calculator, time, a knowledge-base search), a guard against redundant tool calls, and per-session conversation state. The judgment I care about surfacing here is the design reasoning: knowing the difference between prompting a model to <em>sound</em> agentic and architecting a loop where the model is actually the orchestrator deciding what to do next.</p>
+        <p><strong>2. How models are served in a modern, cloud-native world.</strong> The other reason was to serve an LLM the way it's done at scale — not a model baked into a container as an afterthought, but GPU inference running as a first-class Kubernetes workload: a dedicated GPU nodepool, the NVIDIA device plugin exposing <code class="inline">nvidia.com/gpu</code> as a schedulable resource, taints and tolerations so only inference lands on the expensive hardware, and vLLM serving an OpenAI-compatible endpoint that the rest of the cluster consumes over a normal service. This is the same pattern the large AI clusters and HPC shops use to pack accelerators into orchestrated, schedulable pools. Getting an A10 to serve a 7B model as a clean Kubernetes citizen — schedulable, tear-down-able, reproducible from code — was the point as much as the app on top of it.</p>
+        <div class="callout">
+          <span class="clabel">Why it matters</span>
+          Anyone can call a hosted model API. What's harder, and more valuable to actually understand, is owning both ends: the reasoning loop that makes an agent autonomous, and the cloud-native infrastructure that serves the model underneath it. This project was me proving I can reason about and build both.
         </div>
       </section>
 
@@ -563,12 +573,17 @@ e3 = model.encode("I enjoy cooking pasta on weekends")
       <!-- WEEK 4 -->
       <section id="w4">
         <h2><span class="marker">w4</span> Agents + tool calling</h2>
-        <p class="lede">The app stops just answering and starts doing.</p>
-        <p>Tool calling is where the model decides to invoke functions I defined — get the time, run a calculation, hit a live weather API, or search the knowledge base. This maps directly onto the API-integration work from my engineering days, except the model is now the orchestrator deciding <em>which</em> integration to call based on intent. I added a dedup guard so it wouldn't re-call the same tool, and conversation memory so multi-turn context works.</p>
+        <p class="lede">The part I most wanted to get right: a real agent, not a chatbot dressed up as one.</p>
+        <p>This is where the app stops just answering and starts <em>doing</em> — and where the design thinking matters most. A real agent isn't a prompt that sounds autonomous; it's a loop where the model is the orchestrator. It reads the request, decides on its own which tool fits the intent, calls it, reads the result, and decides whether it now has enough to answer or needs another step. I wired genuine function-calling to four real tools — current time, a calculator, a live weather API, and a knowledge-base search — so the model's decisions execute against actual systems, not stubs.</p>
+        <p>Two pieces make it behave like an agent rather than a one-shot call. A <strong>reasoning loop</strong> with a step budget lets the model chain tools (look something up, then calculate on it) instead of firing once. And <strong>per-session memory</strong> carries context across turns, so a follow-up like "and what about tomorrow?" resolves against what came before. I also added a dedup guard so it won't re-call an identical tool in a loop — a small but real correctness fix that only shows up once you're running a genuine multi-step agent.</p>
+        <div class="callout">
+          <span class="clabel">The design judgment</span>
+          The distinction I want to be clear about: prompting a model to <em>sound</em> agentic is easy; architecting a control loop where the model actually decides, acts, observes, and continues — with memory and safeguards — is the real engineering. That's the version I built.
+        </div>
         <div class="fold">
           <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Making the agent backend-portable</span><span class="fold-tag detail">detail</span></div>
           <div class="fold-body">
-            <p>Ollama and vLLM express tool calling differently — Ollama's Python library versus vLLM's OpenAI-format API. I isolated the difference behind two small helpers so the same agent loop runs against either backend with just an env-var switch. The tool schemas were already in OpenAI format, so they ported unchanged.</p>
+            <p>Ollama and vLLM express tool calling differently — Ollama's Python library versus vLLM's OpenAI-format API. I isolated the difference behind two small helpers so the same agent loop runs against either backend with just an env-var switch. The tool schemas were already in OpenAI format, so they ported unchanged — the same agent that reasoned against a local model now reasons against a GPU-served one in the cluster.</p>
           </div>
         </div>
       </section>
@@ -579,9 +594,16 @@ e3 = model.encode("I enjoy cooking pasta on weekends")
         <p class="lede">The week my infrastructure background became the advantage.</p>
         <p>Everything to here was application logic. Week five was pure infrastructure: containerize the app, provision an OKE cluster with Terraform, serve the model on an A10 GPU with vLLM, and automate the whole thing through GitHub Actions. Corporate policy blocked Docker on my laptop — so images build in the pipeline instead, which is arguably the more correct pattern anyway.</p>
         <p>The portable design paid off here: the same backend image runs locally against Ollama and in-cluster against vLLM, switched by a single environment variable.</p>
+        <p>The piece I most wanted to do properly was <strong>serving the model the cloud-native way</strong> — GPU inference as a first-class Kubernetes workload, the same pattern the large AI clusters use. That meant a dedicated GPU nodepool separate from the CPU workers, the NVIDIA device plugin exposing <code class="inline">nvidia.com/gpu</code> as a schedulable resource, a taint on the GPU node with a matching toleration on vLLM so <em>only</em> inference lands on the expensive hardware, and vLLM serving an OpenAI-compatible endpoint that the rest of the cluster consumes over an ordinary service. The GPU becomes just another schedulable, reproducible, tear-down-able resource in the pool — which is exactly how accelerators are managed at scale.</p>
         <div class="term">
           <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">terraform</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
           <div class="term-body"><span class="comment"># the CPU stack, then the GPU node when testing inference</span><span class="cmd" data-c="terraform apply">terraform apply</span><span class="cmd" data-c="terraform apply -var=&quot;enable_gpu=true&quot;">terraform apply -var="enable_gpu=true"</span></div>
+        </div>
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">GPU as a schedulable Kubernetes resource</span><span class="fold-tag detail">detail</span></div>
+          <div class="fold-body">
+            <p>The vLLM pod requests <code class="inline">nvidia.com/gpu: 1</code> as a resource limit, carries a <code class="inline">nodeSelector</code> for the GPU nodepool label, and tolerates the GPU node's taint. The scheduler places it only where a GPU is advertised and free. Flip the nodepool off and the accelerator leaves the pool entirely — no idle GPU quietly billing. That's the same schedulable-accelerator model that HPC-scale AI clusters run on, just at one-node scale.</p>
+          </div>
         </div>
       </section>
 
@@ -704,9 +726,47 @@ POST /agent        autonomous tool-calling + memory</div>
         <p>Because every resource is Terraform-managed, teardown is complete and clean — no orphaned load balancers quietly billing, no manual console cleanup. And it all rebuilds from <code class="inline">terraform apply</code> whenever I want it back.</p>
       </section>
 
+      <!-- ROADMAP -->
+      <section id="roadmap">
+        <h2><span class="marker">»</span> What's next — Day 2</h2>
+        <p class="lede">Getting it running was Day 1. What separates a demo from a system is Day 2: keeping it updated, making it better, and being able to see and control what it costs. Here's what I'm building next.</p>
+
+        <h3>1 · Lifecycle &amp; updates</h3>
+        <p>Right now a model or vLLM upgrade is a manual redeploy. The next step is treating the inference layer like any other production service with a real update path:</p>
+        <ul>
+          <li><strong>vLLM version upgrades</strong> — pin and roll vLLM image versions deliberately instead of <code class="inline">:latest</code>, with a canary step before promoting.</li>
+          <li><strong>Model swaps &amp; A/B</strong> — run two model versions behind the same service and shift traffic gradually, so a new model earns its rollout instead of a hard cutover.</li>
+          <li><strong>Persistent model cache</strong> — a PVC-backed Hugging Face cache so a pod restart doesn't re-download ~15GB of weights, cutting cold-start from minutes to seconds.</li>
+          <li><strong>GPU autoscaling</strong> — scale the GPU pool to zero when idle and back up on demand (Karpenter-style provisioning), so the expensive hardware only exists when there's work.</li>
+        </ul>
+
+        <h3>2 · Model improvement</h3>
+        <p>The base model is a starting point. Making it genuinely good for a specific domain is its own discipline:</p>
+        <ul>
+          <li><strong>Fine-tuning</strong> — LoRA / QLoRA adapters on domain data, served by vLLM alongside the base weights, to lift answer quality without retraining from scratch.</li>
+          <li><strong>An eval harness</strong> — a real evaluation set and scoring (retrieval hit-rate, answer faithfulness, tool-call accuracy) so "is the new model better?" is a measured answer, not a vibe. This gates the A/B rollouts above.</li>
+          <li><strong>Retrieval quality</strong> — chunking strategy, re-ranking, and embedding-model comparisons, measured against the eval set rather than guessed.</li>
+        </ul>
+
+        <h3>3 · Observability &amp; cost control</h3>
+        <p>The piece I care about most as an operator: you cannot run what you cannot see. Full-stack visibility, top to bottom — app through GPU — with cost as a first-class signal:</p>
+        <ul>
+          <li><strong>App &amp; API tracing</strong> — OpenTelemetry spans across the request path (frontend → backend → retrieval → LLM call) so a slow answer can be traced to the exact hop that caused it.</li>
+          <li><strong>Middleware &amp; dependency metrics</strong> — latency and error rates for Qdrant queries, vLLM calls, and external tool APIs, surfaced as SLIs.</li>
+          <li><strong>Cluster &amp; infra metrics</strong> — Prometheus + Grafana for node, pod, and control-plane health across the whole OKE cluster.</li>
+          <li><strong>GPU observability</strong> — the NVIDIA DCGM exporter feeding Prometheus: utilization, memory, temperature, and throughput per GPU. This is where performance tuning actually happens — is the A10 saturated, or paying for idle silicon?</li>
+          <li><strong>Cost control</strong> — tie GPU-hours and utilization together so cost per request is visible, idle spend is obvious, and autoscaling decisions are driven by data. On accelerators, cost <em>is</em> a performance metric.</li>
+        </ul>
+
+        <div class="callout">
+          <span class="clabel">The throughline, again</span>
+          Day 1 proves you can build it. Day 2 proves you can run it — update it safely, improve it measurably, and see and control what it costs down to the GPU. That operator's view is where I'm taking this next.
+        </div>
+      </section>
+
       <div class="foot">
         Built end to end · FastAPI · React · Qdrant · vLLM · OKE · Terraform · GitHub Actions<br>
-        A learning project — the muscle memory was the deliverable.
+        A learning project — the muscle memory was the deliverable. Day 2 is where it becomes a system.
       </div>
 
     </div>
