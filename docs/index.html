@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learn AI from Claude — Build Journal</title>
+<style>
+  :root {
+    --ink: #1a1714;
+    --ink-soft: #4a443e;
+    --paper: #faf8f4;
+    --paper-raised: #ffffff;
+    --line: #e6e1d8;
+    --line-strong: #d4cec2;
+    --accent: #c74634;
+    --accent-soft: #f7e6e2;
+    --term-bg: #17140f;
+    --term-ink: #e8e2d6;
+    --term-green: #7fb069;
+    --term-dim: #8a8175;
+    --sidebar-w: 288px;
+    --gold: #b8863b;
+    --blue: #3a6ea5;
+    --purple: #7d57c1;
+    --green: #3a8340;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- layout ---------- */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--term-bg);
+    color: var(--term-ink);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 28px 0 40px;
+    border-right: 1px solid #000;
+  }
+  .brand {
+    padding: 0 24px 22px;
+    border-bottom: 1px solid #2a251d;
+    margin-bottom: 18px;
+  }
+  .brand .prompt {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--term-green);
+    letter-spacing: 0.02em;
+  }
+  .brand h1 {
+    font-size: 17px;
+    font-weight: 650;
+    margin-top: 6px;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+  .brand .sub {
+    font-size: 12px;
+    color: var(--term-dim);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .nav-group { margin-bottom: 6px; padding: 0 12px; }
+  .nav-group-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--term-dim);
+    padding: 14px 12px 6px;
+  }
+  .nav-link {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    padding: 7px 12px;
+    border-radius: 7px;
+    color: var(--term-ink);
+    text-decoration: none;
+    font-size: 13.5px;
+    transition: background 0.13s, color 0.13s;
+  }
+  .nav-link:hover { background: #221d16; }
+  .nav-link.active { background: var(--accent); color: #fff; }
+  .nav-link.active .nav-num { color: #f7c9c1; }
+  .nav-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--term-dim);
+    min-width: 16px;
+  }
+
+  /* ---------- main ---------- */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    max-width: calc(100vw - var(--sidebar-w));
+  }
+  .content {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 72px 56px 120px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero { margin-bottom: 64px; }
+  .hero .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: 44px;
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-bottom: 20px;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 62ch;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 28px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  .hero-meta .stat { }
+  .hero-meta .stat .n {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+  }
+  .hero-meta .stat .l {
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  /* ---------- sections ---------- */
+  section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  section > h2 {
+    font-size: 28px;
+    font-weight: 680;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--line-strong);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  section > h2 .marker {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  section > .lede {
+    font-size: 16.5px;
+    color: var(--ink-soft);
+    margin: 18px 0 24px;
+  }
+  h3 {
+    font-size: 19px;
+    font-weight: 640;
+    margin: 32px 0 10px;
+    letter-spacing: -0.01em;
+  }
+  p { margin-bottom: 15px; }
+  p a, .content a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+  p a:hover { border-bottom-color: var(--accent); }
+  strong { font-weight: 640; }
+  ul, ol { margin: 0 0 16px 22px; }
+  li { margin-bottom: 7px; }
+
+  code.inline {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: #efe9df;
+    color: #8a3a2c;
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- terminal / command block ---------- */
+  .term {
+    background: var(--term-bg);
+    border-radius: 11px;
+    margin: 20px 0;
+    overflow: hidden;
+    border: 1px solid #000;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    background: #211c15;
+    border-bottom: 1px solid #000;
+  }
+  .term-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .term-dot.r { background: #e05a4a; }
+  .term-dot.y { background: #d9a441; }
+  .term-dot.g { background: #7fb069; }
+  .term-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--term-dim);
+    margin-left: 8px;
+  }
+  .term-copy {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--term-dim);
+    background: transparent;
+    border: 1px solid #3a3228;
+    border-radius: 6px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: all 0.13s;
+  }
+  .term-copy:hover { color: var(--term-ink); border-color: var(--term-dim); }
+  .term-copy.done { color: var(--term-green); border-color: var(--term-green); }
+  .term-body {
+    padding: 15px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--term-ink);
+    overflow-x: auto;
+  }
+  .term-body .cmd::before {
+    content: "$ ";
+    color: var(--term-green);
+    user-select: none;
+  }
+  .term-body .cmd { color: #fff; display: block; white-space: pre; }
+  .term-body .comment { color: var(--term-dim); display: block; white-space: pre; }
+  .term-body .out { color: var(--term-dim); display: block; white-space: pre; }
+
+  /* code block (non-terminal, e.g. yaml/python) */
+  .code {
+    background: #1e1a14;
+    border-radius: 11px;
+    margin: 20px 0;
+    overflow: hidden;
+    border: 1px solid #000;
+  }
+  .code-bar {
+    display: flex; align-items: center;
+    padding: 9px 14px;
+    background: #241e16;
+    border-bottom: 1px solid #000;
+  }
+  .code-lang {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .code-copy {
+    margin-left: auto;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--term-dim); background: transparent;
+    border: 1px solid #3a3228; border-radius: 6px;
+    padding: 3px 10px; cursor: pointer; transition: all 0.13s;
+  }
+  .code-copy:hover { color: var(--term-ink); border-color: var(--term-dim); }
+  .code-copy.done { color: var(--term-green); border-color: var(--term-green); }
+  .code-body {
+    padding: 15px 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #d6cfc0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* ---------- collapsible ---------- */
+  .fold {
+    border: 1px solid var(--line-strong);
+    border-radius: 11px;
+    margin: 18px 0;
+    overflow: hidden;
+    background: var(--paper-raised);
+  }
+  .fold-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 18px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--paper-raised);
+    transition: background 0.13s;
+  }
+  .fold-head:hover { background: #f3efe8; }
+  .fold-chevron {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 13px;
+    transition: transform 0.2s;
+  }
+  .fold.open .fold-chevron { transform: rotate(90deg); }
+  .fold-title { font-weight: 600; font-size: 15px; }
+  .fold-tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .fold-tag.gotcha { background: #fbe9e5; background: #fbe9e5; color: var(--accent); }
+  .fold-tag.detail { background: #eaf1f8; color: var(--blue); }
+  .fold-body {
+    padding: 0 18px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.28s ease, padding 0.28s ease;
+  }
+  .fold.open .fold-body { padding: 4px 18px 18px; max-height: 4000px; }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: #fbf1ee;
+    padding: 14px 18px;
+    border-radius: 0 9px 9px 0;
+    margin: 20px 0;
+    font-size: 15px;
+  }
+  .callout.warn { border-left-color: var(--gold); background: #fbf5e9; }
+  .callout .clabel {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 5px;
+  }
+  .callout.warn .clabel { color: var(--gold); }
+
+  /* ---------- diagram ---------- */
+  .diagram-wrap {
+    margin: 24px 0;
+    padding: 20px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+  }
+  .diagram-wrap img { width: 100%; height: auto; display: block; }
+
+  /* ---------- stack chips ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--line-strong);
+    background: var(--paper-raised);
+    color: var(--ink-soft);
+  }
+  .chip b { color: var(--accent); font-weight: 600; }
+
+  /* footer */
+  .foot {
+    margin-top: 80px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line-strong);
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+
+  /* mobile */
+  .menu-btn { display: none; }
+  @media (max-width: 880px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.25s; z-index: 50; }
+    .sidebar.show { transform: translateX(0); }
+    .main { margin-left: 0; max-width: 100vw; }
+    .content { padding: 64px 22px 90px; }
+    .hero h1 { font-size: 32px; }
+    .menu-btn {
+      display: flex; align-items: center; gap: 8px;
+      position: fixed; top: 14px; left: 14px; z-index: 60;
+      background: var(--term-bg); color: #fff;
+      border: none; border-radius: 9px; padding: 9px 14px;
+      font-family: var(--mono); font-size: 13px; cursor: pointer;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<button class="menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('show')">☰ menu</button>
+<div class="shell">
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="prompt">~/learn-ai-from-claude $</div>
+      <h1>Build Journal</h1>
+      <div class="sub">RAG · agents · OKE · vLLM</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">The Story</div>
+      <a class="nav-link" href="#intro"><span class="nav-num">00</span> Why I built this</a>
+      <a class="nav-link" href="#arc"><span class="nav-num">01</span> Architecture</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">The Journey</div>
+      <a class="nav-link" href="#w1"><span class="nav-num">w1</span> FastAPI + local LLM</a>
+      <a class="nav-link" href="#w2"><span class="nav-num">w2</span> Embeddings + Qdrant</a>
+      <a class="nav-link" href="#w3"><span class="nav-num">w3</span> Full RAG + UI</a>
+      <a class="nav-link" href="#w4"><span class="nav-num">w4</span> Agents + tools</a>
+      <a class="nav-link" href="#w5"><span class="nav-num">w5</span> Cloud deploy</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Reference</div>
+      <a class="nav-link" href="#deploy"><span class="nav-num">→</span> Deploy it yourself</a>
+      <a class="nav-link" href="#stack"><span class="nav-num">→</span> Stack &amp; endpoints</a>
+      <a class="nav-link" href="#gotchas"><span class="nav-num">!</span> Gotchas &amp; fixes</a>
+      <a class="nav-link" href="#teardown"><span class="nav-num">→</span> Teardown</a>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+    <div class="content">
+
+      <!-- HERO -->
+      <div class="hero" id="intro">
+        <div class="eyebrow">A hands-on build journal</div>
+        <h1>From a local script to a GPU-served AI app on Kubernetes.</h1>
+        <p>I spent most of my career as a full-stack software engineer, then moved into sales solutions engineering. This project was how I rebuilt the end-to-end muscle — system design through deployment — for the AI era. Every layer here I built and debugged myself.</p>
+        <div class="hero-meta">
+          <div class="stat"><span class="n">6</span><span class="l">weeks, end to end</span></div>
+          <div class="stat"><span class="n">100%</span><span class="l">infra as code</span></div>
+          <div class="stat"><span class="n">1</span><span class="l">click to deploy</span></div>
+          <div class="stat"><span class="n">11</span><span class="l">real gotchas solved</span></div>
+        </div>
+      </div>
+
+      <!-- WHY -->
+      <section>
+        <h2><span class="marker">00</span> Why I built this</h2>
+        <p class="lede">The honest starting point: I wasn't sure whether working in AI meant going back to full-time software development.</p>
+        <p>As a software engineer I owned the whole chain — system design, data modeling, business objects, middleware APIs, and the single-page apps that consumed them. That end-to-end ownership was the part I missed. Skilling up on AI in scattered pieces never gave me the same confidence.</p>
+        <p>So instead of another course, I built one complete system from scratch: a retrieval-augmented chat app with an agent, running on real cloud infrastructure I provisioned myself. The goal was muscle memory — the kind you only get by shipping something with real stakes and debugging it when it breaks. It broke plenty. That was the point.</p>
+        <div class="callout">
+          <span class="clabel">The throughline</span>
+          The old mental model — data layer → business logic → APIs → frontend — maps almost perfectly onto AI systems. The vector database is the new relational DB, the LLM call is a new kind of service dependency, and the React frontend barely changes. What's new is embeddings, retrieval, and GPU serving. Everything else was already in my hands.
+        </div>
+      </section>
+
+      <!-- ARCHITECTURE -->
+      <section id="arc">
+        <h2><span class="marker">01</span> Architecture</h2>
+        <p class="lede">A RAG + agent application on Oracle Container Engine for Kubernetes, serving an open LLM on an A10 GPU.</p>
+        <div class="diagram-wrap">
+          <img src="architecture.svg" alt="Architecture diagram">
+        </div>
+        <p>A question flows from the browser through an OCI load balancer to the FastAPI backend, which embeds it, searches Qdrant for relevant document chunks, injects them as context, and asks the LLM to answer — grounded in the source material with citations. Agent mode adds autonomous tool-calling. Worker nodes sit on a private subnet with no public IPs; only the load balancer is exposed.</p>
+        <div class="chips">
+          <span class="chip"><b>API</b> FastAPI</span>
+          <span class="chip"><b>UI</b> React + nginx</span>
+          <span class="chip"><b>Vectors</b> Qdrant</span>
+          <span class="chip"><b>LLM</b> vLLM · Qwen2.5-7B</span>
+          <span class="chip"><b>Orchestration</b> OKE</span>
+          <span class="chip"><b>IaC</b> Terraform</span>
+          <span class="chip"><b>CI/CD</b> GitHub Actions</span>
+        </div>
+      </section>
+
+      <!-- WEEK 1 -->
+      <section id="w1">
+        <h2><span class="marker">w1</span> FastAPI + local LLM</h2>
+        <p class="lede">Get a local model answering through code I wrote — not a chat box.</p>
+        <p>The first week was about making the environment feel like home. FastAPI stands in for .NET Web API — same controller-and-route mental model, different syntax. Ollama runs an open model entirely on the laptop, exposing a REST API the backend calls. The deliverable was a streaming <code class="inline">/chat</code> endpoint.</p>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">bash</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
+          <div class="term-body"><span class="comment"># run a model locally, then call it from code</span><span class="cmd" data-c="ollama pull llama3.2:3b">ollama pull llama3.2:3b</span><span class="cmd" data-c="uvicorn main:app --reload">uvicorn main:app --reload</span></div>
+        </div>
+      </section>
+
+      <!-- WEEK 2 -->
+      <section id="w2">
+        <h2><span class="marker">w2</span> Embeddings + Qdrant</h2>
+        <p class="lede">The week the whole thing clicked: meaning as math.</p>
+        <p>An embedding is just a vector that represents meaning. Two similar sentences land close together; unrelated ones don't. Cosine similarity measures the distance. Once that lands, semantic search stops being magic — it's a query against a vector database, the same shape as a SQL <code class="inline">WHERE</code> clause, but by meaning instead of exact match.</p>
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">The "aha" — similarity in numbers</span><span class="fold-tag detail">detail</span></div>
+          <div class="fold-body">
+            <p>Running this printed <code class="inline">0.67</code> for a related pair and <code class="inline">0.02</code> for an unrelated one. That gap is the entire basis of retrieval — set a threshold around 0.3 and you have a working relevance filter.</p>
+            <div class="code">
+              <div class="code-bar"><span class="code-lang">python</span><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+              <div class="code-body" data-c='e1 = model.encode("Kubernetes manages containers")
+e2 = model.encode("K8s orchestrates containerized apps")
+e3 = model.encode("I enjoy cooking pasta on weekends")
+# cosine(e1,e2) -> 0.67   cosine(e1,e3) -> 0.02'>e1 = model.encode("Kubernetes manages containers")
+e2 = model.encode("K8s orchestrates containerized apps")
+e3 = model.encode("I enjoy cooking pasta on weekends")
+# cosine(e1,e2) -> 0.67   cosine(e1,e3) -> 0.02</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WEEK 3 -->
+      <section id="w3">
+        <h2><span class="marker">w3</span> Full RAG + React UI</h2>
+        <p class="lede">Wire retrieval and generation into one grounded answer, then put a face on it.</p>
+        <p>RAG is the assembly of the previous two weeks: embed the question, retrieve the closest chunks, inject them into the prompt as context, and ask the model to answer using only that context. The result is grounded — it cites sources and admits when it doesn't know, instead of hallucinating. A React chat UI streams the answer back token by token.</p>
+        <div class="callout">
+          <span class="clabel">The trustworthy property</span>
+          Ask it something outside its knowledge base and it says so, with no sources. That refusal to invent is the single most important behavior of a RAG system — and it comes almost entirely from one line in the prompt: "answer using only the context provided."
+        </div>
+      </section>
+
+      <!-- WEEK 4 -->
+      <section id="w4">
+        <h2><span class="marker">w4</span> Agents + tool calling</h2>
+        <p class="lede">The app stops just answering and starts doing.</p>
+        <p>Tool calling is where the model decides to invoke functions I defined — get the time, run a calculation, hit a live weather API, or search the knowledge base. This maps directly onto the API-integration work from my engineering days, except the model is now the orchestrator deciding <em>which</em> integration to call based on intent. I added a dedup guard so it wouldn't re-call the same tool, and conversation memory so multi-turn context works.</p>
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Making the agent backend-portable</span><span class="fold-tag detail">detail</span></div>
+          <div class="fold-body">
+            <p>Ollama and vLLM express tool calling differently — Ollama's Python library versus vLLM's OpenAI-format API. I isolated the difference behind two small helpers so the same agent loop runs against either backend with just an env-var switch. The tool schemas were already in OpenAI format, so they ported unchanged.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- WEEK 5 -->
+      <section id="w5">
+        <h2><span class="marker">w5</span> Cloud deployment</h2>
+        <p class="lede">The week my infrastructure background became the advantage.</p>
+        <p>Everything to here was application logic. Week five was pure infrastructure: containerize the app, provision an OKE cluster with Terraform, serve the model on an A10 GPU with vLLM, and automate the whole thing through GitHub Actions. Corporate policy blocked Docker on my laptop — so images build in the pipeline instead, which is arguably the more correct pattern anyway.</p>
+        <p>The portable design paid off here: the same backend image runs locally against Ollama and in-cluster against vLLM, switched by a single environment variable.</p>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">terraform</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
+          <div class="term-body"><span class="comment"># the CPU stack, then the GPU node when testing inference</span><span class="cmd" data-c="terraform apply">terraform apply</span><span class="cmd" data-c="terraform apply -var=&quot;enable_gpu=true&quot;">terraform apply -var="enable_gpu=true"</span></div>
+        </div>
+      </section>
+
+      <!-- DEPLOY -->
+      <section id="deploy">
+        <h2><span class="marker">→</span> Deploy it yourself</h2>
+        <p class="lede">The entire stack is one-click deployable into your own OCI tenancy.</p>
+        <p>Because the infrastructure is fully described in Terraform and packaged for OCI Resource Manager, anyone can deploy it. Fill in a form, pick a compartment, toggle the GPU, and go. Or run it locally:</p>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">bash</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
+          <div class="term-body"><span class="cmd" data-c="cd infra">cd infra</span><span class="cmd" data-c="cp terraform.tfvars.example terraform.tfvars">cp terraform.tfvars.example terraform.tfvars</span><span class="comment"># fill in region, compartment, tenancy OCIDs</span><span class="cmd" data-c="terraform init && terraform apply">terraform init &amp;&amp; terraform apply</span><span class="cmd" data-c="terraform output -raw kubeconfig_command | bash">terraform output -raw kubeconfig_command | bash</span></div>
+        </div>
+        <div class="callout warn">
+          <span class="clabel">Cost</span>
+          The A10 GPU node bills hourly (~$2–3/hr). Keep <code class="inline">enable_gpu = false</code> unless actively testing inference, and tear it down when done.
+        </div>
+      </section>
+
+      <!-- STACK -->
+      <section id="stack">
+        <h2><span class="marker">→</span> Stack &amp; endpoints</h2>
+        <p class="lede">What runs where, and the API surface.</p>
+        <h3>Backend endpoints</h3>
+        <div class="code">
+          <div class="code-bar"><span class="code-lang">http</span><button class="code-copy" onclick="copyCode(this)">copy</button></div>
+          <div class="code-body" data-c="GET  /health       health check + indexed chunk count
+POST /search       semantic search only (no LLM)
+POST /rag          full RAG: retrieve + generate
+POST /rag/stream   streaming RAG
+POST /chat         direct LLM, no retrieval
+POST /agent        autonomous tool-calling + memory">GET  /health       health check + indexed chunk count
+POST /search       semantic search only (no LLM)
+POST /rag          full RAG: retrieve + generate
+POST /rag/stream   streaming RAG
+POST /chat         direct LLM, no retrieval
+POST /agent        autonomous tool-calling + memory</div>
+        </div>
+        <h3>Infrastructure (Terraform-managed)</h3>
+        <ul>
+          <li>VCN with public/private subnets, NAT + service gateways</li>
+          <li>IAM dynamic group + policies for OKE</li>
+          <li>OCIR private repositories for images</li>
+          <li>OKE cluster + CPU nodepool (E5.Flex)</li>
+          <li>Toggleable A10 GPU nodepool for vLLM</li>
+          <li>In-cluster image pull secret</li>
+        </ul>
+      </section>
+
+      <!-- GOTCHAS -->
+      <section id="gotchas">
+        <h2><span class="marker">!</span> Gotchas &amp; fixes</h2>
+        <p class="lede">The real education. None of these were in any tutorial — each cost real debugging time.</p>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">CRI-O rejects short image names</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>OKE nodes use CRI-O, which refuses ambiguous short names like <code class="inline">qdrant/qdrant:latest</code>. Fully qualify every public image.</p>
+            <div class="term"><div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">fix</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div><div class="term-body"><span class="comment"># wrong: qdrant/qdrant:latest</span><span class="cmd" data-c="image: docker.io/qdrant/qdrant:latest">image: docker.io/qdrant/qdrant:latest</span></div></div>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">OCIR pull secret region-key mismatch</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Images were tagged <code class="inline">iad.ocir.io</code> but the pull secret authenticated against <code class="inline">us-ashburn-1.ocir.io</code>. Same region, different hostname — so pulls fell back to anonymous and failed with "Anonymous users are only allowed read access on public repos." The secret's registry host must match the image tag host exactly.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">GPU boot volume doesn't auto-expand</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Setting <code class="inline">boot_volume_size_in_gbs = 200</code> provisions a bigger disk, but the filesystem stays at the default ~37GB — so vLLM's image + model download got evicted for low ephemeral storage. A cloud-init step must grow the filesystem onto the larger volume with <code class="inline">oci-growfs -y</code>.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">VLLM_PORT env collision</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Kubernetes auto-injects a <code class="inline">VLLM_PORT</code> variable for the vLLM <em>service</em> (a <code class="inline">tcp://…</code> URI), which collides with vLLM's own config var of the same name. vLLM crashed parsing the URI as a port. Fix: set <code class="inline">VLLM_PORT: "8000"</code> explicitly in the pod env.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">RWO volume deadlock on rolling updates</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>A Deployment with a ReadWriteOnce volume briefly runs two pods during a rolling update — and they deadlock fighting over the single-attach volume. Set <code class="inline">strategy: Recreate</code> so the old pod releases the volume before the new one starts.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Model-name mismatch → KeyError</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>The backend requested a model name vLLM wasn't serving, so vLLM returned an error payload with no <code class="inline">choices</code> key and the client crashed. Align the requested model with the served one, and guard the parse so a vLLM error surfaces clearly instead of a cryptic <code class="inline">KeyError</code>.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Node shape / image incompatibility</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p><code class="inline">VM.Standard.E4.Flex</code> failed to pair with the OL8 node image ("shape and image are not compatible") even though the image name was correct. Switching to <code class="inline">VM.Standard.E5.Flex</code> resolved it — the issue was shape availability, not the image.</p>
+          </div>
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">OKE node registration timeout</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Private-subnet workers failed to register with the control plane until the security lists allowed the specific cross-subnet ports OKE needs — 6443 and 12250 (workers → API), 10250 (API → kubelet), plus the ICMP path-MTU rule.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TEARDOWN -->
+      <section id="teardown">
+        <h2><span class="marker">→</span> Teardown</h2>
+        <p class="lede">The whole point of infrastructure as code: it all comes back from one command.</p>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">bash</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
+          <div class="term-body"><span class="comment"># drop just the GPU to stop hourly billing</span><span class="cmd" data-c="terraform apply -var=&quot;enable_gpu=false&quot;">terraform apply -var="enable_gpu=false"</span><span class="comment"># or tear down everything</span><span class="cmd" data-c="terraform destroy">terraform destroy</span></div>
+        </div>
+        <p>Because every resource is Terraform-managed, teardown is complete and clean — no orphaned load balancers quietly billing, no manual console cleanup. And it all rebuilds from <code class="inline">terraform apply</code> whenever I want it back.</p>
+      </section>
+
+      <div class="foot">
+        Built end to end · FastAPI · React · Qdrant · vLLM · OKE · Terraform · GitHub Actions<br>
+        A learning project — the muscle memory was the deliverable.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // copy handlers
+  function copyTerm(btn) {
+    const body = btn.closest('.term').querySelector('.term-body');
+    const cmds = [...body.querySelectorAll('.cmd')].map(el => el.dataset.c || el.textContent).join('\n');
+    navigator.clipboard.writeText(cmds).then(() => flash(btn));
+  }
+  function copyCode(btn) {
+    const body = btn.closest('.code').querySelector('.code-body');
+    navigator.clipboard.writeText(body.dataset.c || body.textContent).then(() => flash(btn));
+  }
+  function flash(btn) {
+    const t = btn.textContent; btn.textContent = 'copied'; btn.classList.add('done');
+    setTimeout(() => { btn.textContent = t; btn.classList.remove('done'); }, 1400);
+  }
+
+  // collapsible
+  function toggleFold(head) { head.closest('.fold').classList.toggle('open'); }
+
+  // scrollspy for active nav
+  const links = [...document.querySelectorAll('.nav-link')];
+  const sections = links.map(l => document.querySelector(l.getAttribute('href'))).filter(Boolean);
+  const spy = () => {
+    let cur = sections[0];
+    const y = window.scrollY + 120;
+    for (const s of sections) { if (s.offsetTop <= y) cur = s; }
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + cur.id));
+  };
+  window.addEventListener('scroll', spy, { passive: true });
+  spy();
+
+  // close mobile sidebar on nav
+  links.forEach(l => l.addEventListener('click', () => document.querySelector('.sidebar').classList.remove('show')));
+</script>
+</body>
+</html>
