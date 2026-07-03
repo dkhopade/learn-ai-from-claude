@@ -131,6 +131,12 @@ export default function App() {
             >Agent</button>
           </div>
           <button onClick={() => setMessages([])} style={styles.clearBtn}>Clear</button>
+          <a
+            href="https://dkhopade.github.io/learn-ai-from-claude/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={styles.docsLink}
+          >Docs</a>
         </div>
       </div>
 
@@ -198,6 +204,7 @@ const styles = {
   toggleBtn: { padding: "6px 14px", fontSize: 13, border: "none", background: "#fff", cursor: "pointer", color: "#666" },
   toggleActive: { padding: "6px 14px", fontSize: 13, border: "none", background: "#0070f3", color: "#fff", cursor: "pointer" },
   clearBtn: { fontSize: 12, padding: "6px 12px", cursor: "pointer", border: "1px solid #ddd", borderRadius: 6, background: "#fff" },
+  docsLink: { fontSize: 12, fontWeight: 600, padding: "6px 14px", color: "#c74634", textDecoration: "none", border: "1px solid #c74634", borderRadius: 6, background: "#fff" },
   messages: { flex: 1, overflowY: "auto", padding: "1rem 0", display: "flex", flexDirection: "column", gap: 16 },
   empty: { textAlign: "center", color: "#aaa", marginTop: 80, fontSize: 15 },
   userMsg: { display: "flex", flexDirection: "column", alignItems: "flex-end" },
