@@ -23,3 +23,4 @@ day2/mlflow.db
 day2/eval.db
 day2/__pycache__/
 day2/mlruns/
+train.jsonl
