@@ -1,0 +1,12 @@
+# Phase 1 — eval harness (CPU)
+httpx
+datasets
+mlflow
+
+# Phase 2 — fine-tuning (GPU)
+torch
+transformers
+peft
+trl
+accelerate
+bitsandbytes
