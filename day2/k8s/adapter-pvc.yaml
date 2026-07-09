@@ -1,0 +1,17 @@
+# Shared storage for LoRA adapters + the HF model cache.
+# The training Job writes the adapter here; vLLM later mounts and serves it.
+#
+# NOTE: OCI block volumes are ReadWriteOnce — only one pod mounts at a time.
+# That forces training and serving to be serial, which is fine: they both
+# need the single A10 GPU anyway.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lora-adapters
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: oci-bv

@@ -1,0 +1,77 @@
+# Kubernetes Job: runs the LoRA fine-tune to completion on the GPU node.
+#
+# A Job (unlike a Deployment) runs a pod until it succeeds, then stops.
+# That's the right primitive for training: it has a beginning and an end.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: finetune-sql-lora
+spec:
+  backoffLimit: 1          # retry once on failure
+  ttlSecondsAfterFinished: 3600   # auto-clean the pod an hour after it finishes
+  template:
+    metadata:
+      labels:
+        app: finetune
+    spec:
+      restartPolicy: Never
+      # schedule onto the GPU node (same selector/toleration as vLLM)
+      nodeSelector:
+        node-type: gpu
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: trainer
+          image: docker.io/vllm/vllm-openai:latest   # has CUDA + torch already
+          command: ["/bin/bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              echo "=== installing training deps ==="
+              pip install --no-cache-dir peft trl datasets accelerate bitsandbytes
+
+              echo "=== fetching project source ==="
+              cd /workspace
+              git clone --depth 1 --branch day2-mlops \
+                https://github.com/dkhopade/learn-ai-from-claude.git repo
+              cd repo/day2
+
+              echo "=== preparing training data ==="
+              python prepare_training_data.py --n 5000 --out train.jsonl
+
+              echo "=== fine-tuning (QLoRA) ==="
+              python finetune.py \
+                --data train.jsonl \
+                --base-model Qwen/Qwen2.5-7B-Instruct \
+                --out /adapters/sql-lora \
+                --epochs 1 \
+                --rank 16 \
+                --qlora
+
+              echo "=== done; adapter written to /adapters/sql-lora ==="
+              ls -la /adapters/sql-lora
+          env:
+            - name: HF_HOME
+              value: /adapters/hf-cache     # cache base model on the PVC
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: adapters
+              mountPath: /adapters
+            - name: workspace
+              mountPath: /workspace
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: adapters
+          persistentVolumeClaim:
+            claimName: lora-adapters
+        - name: workspace
+          emptyDir: {}
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi

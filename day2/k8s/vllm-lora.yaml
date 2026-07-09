@@ -1,0 +1,87 @@
+# vLLM serving the base model PLUS the fine-tuned LoRA adapter.
+#
+# Once running, /v1/models lists BOTH:
+#   - Qwen/Qwen2.5-7B-Instruct  (base, no adapter)
+#   - sql-lora                  (base + fine-tuned adapter)
+# The eval harness picks which one by passing --model.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  labels:
+    app: vllm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      nodeSelector:
+        node-type: gpu
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: vllm
+          image: docker.io/vllm/vllm-openai:latest
+          env:
+            - name: VLLM_PORT
+              value: "8000"
+            - name: HF_HOME
+              value: /adapters/hf-cache
+          args:
+            - "--model"
+            - "Qwen/Qwen2.5-7B-Instruct"
+            - "--max-model-len"
+            - "8192"
+            - "--gpu-memory-utilization"
+            - "0.90"
+            - "--enable-lora"
+            - "--max-lora-rank"
+            - "16"
+            - "--lora-modules"
+            - "sql-lora=/adapters/sql-lora"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: adapters
+              mountPath: /adapters
+            - name: shm
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 40
+      volumes:
+        - name: adapters
+          persistentVolumeClaim:
+            claimName: lora-adapters
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+spec:
+  selector:
+    app: vllm
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
