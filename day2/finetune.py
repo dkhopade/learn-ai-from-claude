@@ -126,7 +126,7 @@ def main():
         save_strategy="epoch",
         lr_scheduler_type="cosine",
         warmup_ratio=0.03,
-        max_seq_length=args.max_seq_len,
+        max_length=args.max_seq_len,
         packing=False,                     # keep examples separate (cleaner for eval parity)
         report_to="none",                  # we'll wire MLflow in the next phase
     )
