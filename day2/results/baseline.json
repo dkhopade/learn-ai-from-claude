@@ -1,0 +1,164 @@
+{
+  "label": "baseline",
+  "timestamp": "2026-07-09T02:05:29.735669+00:00",
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "summary": {
+    "total": 15,
+    "executable": 15,
+    "result_match": 15,
+    "execution_accuracy": 1.0,
+    "result_match_accuracy": 1.0
+  },
+  "per_item": [
+    {
+      "id": "q01",
+      "question": "List the names of all students.",
+      "gold_sql": "SELECT name FROM students;",
+      "type": "simple",
+      "pred_sql": "SELECT name FROM students",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q02",
+      "question": "How many students are there?",
+      "gold_sql": "SELECT COUNT(*) FROM students;",
+      "type": "aggregation",
+      "pred_sql": "SELECT COUNT(*) AS student_count FROM students",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q03",
+      "question": "What is the average GPA of all students?",
+      "gold_sql": "SELECT AVG(gpa) FROM students;",
+      "type": "aggregation",
+      "pred_sql": "SELECT AVG(gpa) AS average_gpa FROM students",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q04",
+      "question": "List the names of students with a GPA above 3.5.",
+      "gold_sql": "SELECT name FROM students WHERE gpa > 3.5;",
+      "type": "filter",
+      "pred_sql": "SELECT s.name\nFROM students s\nWHERE s.gpa > 3.5;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q05",
+      "question": "How many students are in each department? Show the department name and the count.",
+      "gold_sql": "SELECT d.name, COUNT(s.student_id) FROM departments d LEFT JOIN students s ON d.dept_id = s.dept_id GROUP BY d.dept_id;",
+      "type": "group_by_join",
+      "pred_sql": "SELECT d.name, COUNT(s.student_id) AS student_count\nFROM departments d\nJOIN students s ON d.dept_id = s.dept_id\nGROUP BY d.name;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q06",
+      "question": "Which department has the highest budget? Return its name.",
+      "gold_sql": "SELECT name FROM departments ORDER BY budget DESC LIMIT 1;",
+      "type": "order_limit",
+      "pred_sql": "SELECT name FROM departments WHERE budget = (SELECT MAX(budget) FROM departments);",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q07",
+      "question": "List the titles of courses offered by the Computer Science department.",
+      "gold_sql": "SELECT c.title FROM courses c JOIN departments d ON c.dept_id = d.dept_id WHERE d.name = 'Computer Science';",
+      "type": "join_filter",
+      "pred_sql": "SELECT c.title\nFROM courses c\nJOIN departments d ON c.dept_id = d.dept_id\nWHERE d.name = 'Computer Science';",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q08",
+      "question": "What is the name of the student with the highest GPA?",
+      "gold_sql": "SELECT name FROM students ORDER BY gpa DESC LIMIT 1;",
+      "type": "order_limit",
+      "pred_sql": "SELECT name FROM students WHERE gpa = (SELECT MAX(gpa) FROM students);",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q09",
+      "question": "How many courses is each student enrolled in? Show student name and count.",
+      "gold_sql": "SELECT s.name, COUNT(e.course_id) FROM students s JOIN enrollments e ON s.student_id = e.student_id GROUP BY s.student_id;",
+      "type": "group_by_join",
+      "pred_sql": "SELECT s.name, COUNT(e.course_id) AS course_count\nFROM students s\nJOIN enrollments e ON s.student_id = e.student_id\nGROUP BY s.student_id, s.name",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q10",
+      "question": "List the names of departments that have more than 2 students.",
+      "gold_sql": "SELECT d.name FROM departments d JOIN students s ON d.dept_id = s.dept_id GROUP BY d.dept_id HAVING COUNT(s.student_id) > 2;",
+      "type": "having",
+      "pred_sql": "SELECT d.name\nFROM departments d\nJOIN students s ON d.dept_id = s.dept_id\nGROUP BY d.name\nHAVING COUNT(s.student_id) > 2;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q11",
+      "question": "What is the average grade in the course titled 'Algorithms'?",
+      "gold_sql": "SELECT AVG(e.grade) FROM enrollments e JOIN courses c ON e.course_id = c.course_id WHERE c.title = 'Algorithms';",
+      "type": "join_aggregation",
+      "pred_sql": "SELECT AVG(enrollments.grade) AS average_grade\nFROM enrollments\nJOIN courses ON enrollments.course_id = courses.course_id\nWHERE courses.title = 'Algorithms';",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q12",
+      "question": "List the names of students enrolled in the 'Databases' course.",
+      "gold_sql": "SELECT s.name FROM students s JOIN enrollments e ON s.student_id = e.student_id JOIN courses c ON e.course_id = c.course_id WHERE c.title = 'Databases';",
+      "type": "multi_join",
+      "pred_sql": "SELECT s.name\nFROM students s\nJOIN enrollments e ON s.student_id = e.student_id\nJOIN courses c ON e.course_id = c.course_id\nWHERE c.title = 'Databases';",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q13",
+      "question": "How many students enrolled in each year? Show the year and the count.",
+      "gold_sql": "SELECT enrolled_year, COUNT(*) FROM students GROUP BY enrolled_year;",
+      "type": "group_by",
+      "pred_sql": "SELECT enrolled_year, COUNT(*) AS student_count\nFROM students\nGROUP BY enrolled_year;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q14",
+      "question": "Which student has taken the most courses? Return their name.",
+      "gold_sql": "SELECT s.name FROM students s JOIN enrollments e ON s.student_id = e.student_id GROUP BY s.student_id ORDER BY COUNT(e.course_id) DESC LIMIT 1;",
+      "type": "group_order_limit",
+      "pred_sql": "SELECT s.name\nFROM students s\nJOIN enrollments e ON s.student_id = e.student_id\nGROUP BY s.student_id, s.name\nORDER BY COUNT(e.course_id) DESC\nLIMIT 1;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "q15",
+      "question": "List the names of students who are not enrolled in any course.",
+      "gold_sql": "SELECT name FROM students WHERE student_id NOT IN (SELECT student_id FROM enrollments);",
+      "type": "subquery",
+      "pred_sql": "SELECT name FROM students WHERE student_id NOT IN (SELECT student_id FROM enrollments)",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    }
+  ]
+}

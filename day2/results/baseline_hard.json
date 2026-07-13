@@ -1,0 +1,174 @@
+{
+  "label": "baseline_hard",
+  "timestamp": "2026-07-09T10:14:02.623449+00:00",
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "summary": {
+    "total": 16,
+    "executable": 16,
+    "result_match": 13,
+    "execution_accuracy": 1.0,
+    "result_match_accuracy": 0.812
+  },
+  "per_item": [
+    {
+      "id": "h01",
+      "question": "List every department name along with how many employees it has. Include departments that have no employees.",
+      "gold_sql": "SELECT d.dept_nm, COUNT(e.emp_id) AS n\n                       FROM depts d LEFT JOIN employees e ON d.dept_cd = e.dept_cd\n                       GROUP BY d.dept_cd;",
+      "type": "left_join",
+      "pred_sql": "SELECT d.dept_nm, COUNT(e.emp_id) AS employee_count\nFROM depts d\nLEFT JOIN employees e ON d.dept_cd = e.dept_cd\nGROUP BY d.dept_cd, d.dept_nm",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h02",
+      "question": "What is the average salary across all employees?",
+      "gold_sql": "SELECT AVG(sal) FROM employees;",
+      "type": "null_aggregation",
+      "pred_sql": "SELECT AVG(sal) AS avg_salary FROM employees;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h03",
+      "question": "How many employees have a recorded salary?",
+      "gold_sql": "SELECT COUNT(sal) FROM employees;",
+      "type": "null_aggregation",
+      "pred_sql": "SELECT COUNT(*) AS employee_count\nFROM employees\nWHERE sal IS NOT NULL;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h04",
+      "question": "Return the names of all employees who earn the highest salary.",
+      "gold_sql": "SELECT emp_nm FROM employees\n                       WHERE sal = (SELECT MAX(sal) FROM employees);",
+      "type": "subquery_max",
+      "pred_sql": "SELECT emp_nm \nFROM employees \nWHERE sal = (SELECT MAX(sal) FROM employees)",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h05",
+      "question": "List the names of employees who earn more than the average salary of their own department.",
+      "gold_sql": "SELECT e.emp_nm FROM employees e\n                       WHERE e.sal > (SELECT AVG(e2.sal) FROM employees e2\n                                      WHERE e2.dept_cd = e.dept_cd);",
+      "type": "correlated_subquery",
+      "pred_sql": "SELECT emp_nm \nFROM employees \nWHERE sal > (\n    SELECT AVG(sal) \n    FROM employees \n    WHERE dept_cd = employees.dept_cd\n)",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h06",
+      "question": "List each employee's name together with their manager's name. Include employees who have no manager.",
+      "gold_sql": "SELECT e.emp_nm, m.emp_nm FROM employees e\n                       LEFT JOIN employees m ON e.mgr_id = m.emp_id;",
+      "type": "self_join_null",
+      "pred_sql": "SELECT e.emp_nm AS employee_name, COALESCE(m.emp_nm, 'No Manager') AS manager_name\nFROM employees e\nLEFT JOIN employees m ON e.mgr_id = m.emp_id;",
+      "executable": true,
+      "result_match": false,
+      "note": ""
+    },
+    {
+      "id": "h07",
+      "question": "Which employees are not assigned to any project? Return their names.",
+      "gold_sql": "SELECT emp_nm FROM employees\n                       WHERE emp_id NOT IN (SELECT emp_id FROM assignments);",
+      "type": "anti_join",
+      "pred_sql": "SELECT emp_nm FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM assignments)",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h08",
+      "question": "List each project name and the total hours logged against it. Include projects with no assignments, showing zero.",
+      "gold_sql": "SELECT p.proj_nm, COALESCE(SUM(a.hrs), 0) AS total_hrs\n                       FROM projects p LEFT JOIN assignments a ON p.proj_id = a.proj_id\n                       GROUP BY p.proj_id;",
+      "type": "left_join_coalesce",
+      "pred_sql": "SELECT p.proj_nm, COALESCE(SUM(a.hrs), 0) AS total_hrs\nFROM projects p\nLEFT JOIN assignments a ON p.proj_id = a.proj_id\nGROUP BY p.proj_id, p.proj_nm",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h09",
+      "question": "For each department, show the department name and its region name. Include departments with no region assigned.",
+      "gold_sql": "SELECT d.dept_nm, r.region_nm FROM depts d\n                       LEFT JOIN regions r ON d.region_cd = r.region_cd;",
+      "type": "left_join_null_fk",
+      "pred_sql": "SELECT d.dept_nm, r.region_nm\nFROM depts d\nLEFT JOIN regions r ON d.region_cd = r.region_cd;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h10",
+      "question": "Show each department name and its 2025 budget amount. Include departments that have no budget row.",
+      "gold_sql": "SELECT d.dept_nm, b.amt FROM depts d\n                       LEFT JOIN budgets b ON d.dept_cd = b.dept_cd AND b.fy = 2025;",
+      "type": "left_join_with_condition",
+      "pred_sql": "SELECT d.dept_nm, COALESCE(b.amt, 0) AS budget_2025\nFROM depts d\nLEFT JOIN budgets b ON d.dept_cd = b.dept_cd AND b.fy = 2025;",
+      "executable": true,
+      "result_match": false,
+      "note": ""
+    },
+    {
+      "id": "h11",
+      "question": "Rank employees within each department by salary from highest to lowest, showing employee name, department code, and their rank.",
+      "gold_sql": "SELECT emp_nm, dept_cd,\n                              RANK() OVER (PARTITION BY dept_cd ORDER BY sal DESC) AS rnk\n                       FROM employees;",
+      "type": "window_function",
+      "pred_sql": "SELECT \n    e.emp_nm, \n    e.dept_cd, \n    RANK() OVER (PARTITION BY e.dept_cd ORDER BY e.sal DESC) AS rank\nFROM \n    employees e\nORDER BY \n    e.dept_cd, rank;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h12",
+      "question": "For each department, return the name of the employee with the highest salary in that department.",
+      "gold_sql": "SELECT e.dept_cd, e.emp_nm FROM employees e\n                       WHERE e.sal = (SELECT MAX(e2.sal) FROM employees e2\n                                      WHERE e2.dept_cd = e.dept_cd);",
+      "type": "correlated_max",
+      "pred_sql": "SELECT d.dept_nm, e.emp_nm\nFROM employees e\nJOIN depts d ON e.dept_cd = d.dept_cd\nWHERE e.sal = (\n    SELECT MAX(sal) \n    FROM employees e2 \n    WHERE e2.dept_cd = e.dept_cd\n);",
+      "executable": true,
+      "result_match": false,
+      "note": ""
+    },
+    {
+      "id": "h13",
+      "question": "Count how many employees each manager directly manages. Show the manager's name and the count.",
+      "gold_sql": "SELECT m.emp_nm, COUNT(e.emp_id) FROM employees m\n                       JOIN employees e ON e.mgr_id = m.emp_id\n                       GROUP BY m.emp_id;",
+      "type": "self_join_aggregate",
+      "pred_sql": "SELECT e1.emp_nm AS manager_name, COUNT(e2.emp_id) AS num_employees\nFROM employees e1\nJOIN employees e2 ON e1.emp_id = e2.mgr_id\nGROUP BY e1.emp_id, e1.emp_nm;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h14",
+      "question": "List the names of employees hired before 2020 who work in a department located in North America.",
+      "gold_sql": "SELECT e.emp_nm FROM employees e\n                       JOIN depts d ON e.dept_cd = d.dept_cd\n                       JOIN regions r ON d.region_cd = r.region_cd\n                       WHERE r.region_nm = 'North America' AND e.hire_dt < '2020-01-01';",
+      "type": "multi_hop_join_date",
+      "pred_sql": "SELECT e.emp_nm \nFROM employees e\nJOIN depts d ON e.dept_cd = d.dept_cd\nJOIN regions r ON d.region_cd = r.region_cd\nWHERE e.hire_dt < '2020-01-01' AND r.region_nm = 'North America'",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h15",
+      "question": "Which departments have more than one employee earning at least 95000? Return the department name and that count.",
+      "gold_sql": "SELECT d.dept_nm, COUNT(*) FROM employees e\n                       JOIN depts d ON e.dept_cd = d.dept_cd\n                       WHERE e.sal >= 95000\n                       GROUP BY d.dept_cd HAVING COUNT(*) > 1;",
+      "type": "having_filtered",
+      "pred_sql": "SELECT d.dept_nm, COUNT(e.emp_id) AS emp_count\nFROM employees e\nJOIN depts d ON e.dept_cd = d.dept_cd\nWHERE e.sal >= 95000\nGROUP BY d.dept_nm\nHAVING COUNT(e.emp_id) > 1;",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    },
+    {
+      "id": "h16",
+      "question": "Return the total hours logged by employees in the Engineering department.",
+      "gold_sql": "SELECT SUM(a.hrs) FROM assignments a\n                       JOIN employees e ON a.emp_id = e.emp_id\n                       WHERE e.dept_cd = 'ENG';",
+      "type": "join_filter_aggregate",
+      "pred_sql": "SELECT SUM(hrs) AS total_hours\nFROM assignments\nJOIN projects ON assignments.proj_id = projects.proj_id\nJOIN depts ON projects.dept_cd = depts.dept_cd\nWHERE depts.dept_nm = 'Engineering';",
+      "executable": true,
+      "result_match": true,
+      "note": ""
+    }
+  ]
+}

@@ -1,9 +1,27 @@
 """
-build_db.py — creates a small, realistic multi-table SQLite database
-used as the target for text-to-SQL evaluation.
+build_db.py — a deliberately ADVERSARIAL text-to-SQL evaluation database.
 
-Domain-neutral (a university/course domain, Spider-style) so the focus
-stays on the NL->SQL technique, not any vertical.
+Two design goals, learned the hard way when base Qwen scored 100% on the
+first (too-easy) version of this eval:
+
+  1. HARD SCHEMA
+     - abbreviated / non-obvious column names (emp_id, mgr_id, dept_cd, sal)
+     - a self-referential FK (employees.mgr_id -> employees.emp_id)
+     - a many-to-many with attributes (assignments)
+     - NULLable columns that matter
+     - a lookup table requiring a multi-hop join
+
+  2. DISCRIMINATING DATA
+     The fixture is built so that WRONG-BUT-PLAUSIBLE queries give DIFFERENT
+     answers than correct ones. Specifically:
+       - a department with ZERO employees  -> LEFT JOIN != INNER JOIN
+       - an employee with NO assignments   -> exposes join-type errors
+       - a project with NO assignments     -> same
+       - NULL salaries                     -> AVG/COUNT semantics matter
+       - NULL mgr_id (the CEO)             -> self-join must handle it
+       - TIES in salary                    -> naive "ORDER BY .. LIMIT 1" is wrong
+       - an employee in a dept whose
+         budget row is missing             -> multi-hop join must be careful
 """
 import sqlite3
 import os
@@ -11,80 +29,100 @@ import os
 DB_PATH = os.path.join(os.path.dirname(__file__), "eval.db")
 
 SCHEMA = """
-CREATE TABLE departments (
-    dept_id     INTEGER PRIMARY KEY,
-    name        TEXT NOT NULL,
-    budget      INTEGER NOT NULL
+CREATE TABLE depts (
+    dept_cd     TEXT PRIMARY KEY,     -- 'ENG', 'SLS', ...
+    dept_nm     TEXT NOT NULL,
+    region_cd   TEXT                  -- FK to regions; NULLable
 );
 
-CREATE TABLE students (
-    student_id  INTEGER PRIMARY KEY,
-    name        TEXT NOT NULL,
-    dept_id     INTEGER,
-    gpa         REAL,
-    enrolled_year INTEGER,
-    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+CREATE TABLE regions (
+    region_cd   TEXT PRIMARY KEY,
+    region_nm   TEXT NOT NULL
 );
 
-CREATE TABLE courses (
-    course_id   INTEGER PRIMARY KEY,
-    title       TEXT NOT NULL,
-    dept_id     INTEGER,
-    credits     INTEGER,
-    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+CREATE TABLE budgets (
+    dept_cd     TEXT PRIMARY KEY,
+    fy          INTEGER NOT NULL,
+    amt         INTEGER
 );
 
-CREATE TABLE enrollments (
-    student_id  INTEGER,
-    course_id   INTEGER,
-    grade       REAL,
-    term        TEXT,
-    PRIMARY KEY (student_id, course_id, term),
-    FOREIGN KEY (student_id) REFERENCES students(student_id),
-    FOREIGN KEY (course_id) REFERENCES courses(course_id)
+CREATE TABLE employees (
+    emp_id      INTEGER PRIMARY KEY,
+    emp_nm      TEXT NOT NULL,
+    dept_cd     TEXT,                 -- FK depts
+    mgr_id      INTEGER,              -- self-FK; NULL for the CEO
+    sal         INTEGER,              -- NULLable (contractors)
+    hire_dt     TEXT                  -- ISO date string
+);
+
+CREATE TABLE projects (
+    proj_id     INTEGER PRIMARY KEY,
+    proj_nm     TEXT NOT NULL,
+    dept_cd     TEXT
+);
+
+CREATE TABLE assignments (
+    emp_id      INTEGER,
+    proj_id     INTEGER,
+    hrs         INTEGER,
+    PRIMARY KEY (emp_id, proj_id)
 );
 """
 
-DEPARTMENTS = [
-    (1, "Computer Science", 500000),
-    (2, "Mathematics", 300000),
-    (3, "Physics", 350000),
-    (4, "History", 200000),
+REGIONS = [
+    ("NA", "North America"),
+    ("EU", "Europe"),
+    ("APAC", "Asia Pacific"),
 ]
 
-STUDENTS = [
-    (1, "Alice Chen", 1, 3.9, 2022),
-    (2, "Bob Kumar", 1, 3.2, 2021),
-    (3, "Carla Diaz", 2, 3.7, 2022),
-    (4, "Deepak Rao", 3, 3.5, 2020),
-    (5, "Eva Novak", 1, 2.8, 2023),
-    (6, "Frank Li", 4, 3.4, 2021),
-    (7, "Grace Park", 2, 3.95, 2022),
-    (8, "Hassan Ali", 3, 3.1, 2023),
+# NOTE: 'HR' dept has NO employees  -> LEFT vs INNER JOIN discriminator
+# NOTE: 'RND' has a NULL region_cd  -> multi-hop join must handle NULL
+DEPTS = [
+    ("ENG", "Engineering", "NA"),
+    ("SLS", "Sales",       "EU"),
+    ("HR",  "Human Resources", "NA"),   # zero employees
+    ("RND", "Research",    None),       # NULL region
 ]
 
-COURSES = [
-    (101, "Intro to Programming", 1, 4),
-    (102, "Algorithms", 1, 3),
-    (103, "Linear Algebra", 2, 3),
-    (104, "Quantum Mechanics", 3, 4),
-    (105, "World History", 4, 3),
-    (106, "Databases", 1, 3),
+# NOTE: no budget row for 'RND'  -> multi-hop join discriminator
+BUDGETS = [
+    ("ENG", 2025, 900000),
+    ("SLS", 2025, 400000),
+    ("HR",  2025, 150000),
 ]
 
-ENROLLMENTS = [
-    (1, 101, 4.0, "Fall2022"),
-    (1, 102, 3.7, "Spring2023"),
-    (1, 106, 4.0, "Fall2023"),
-    (2, 101, 3.0, "Fall2021"),
-    (2, 102, 2.7, "Spring2022"),
-    (3, 103, 3.9, "Fall2022"),
-    (4, 104, 3.3, "Fall2020"),
-    (5, 101, 2.5, "Fall2023"),
-    (6, 105, 3.6, "Fall2021"),
-    (7, 103, 4.0, "Fall2022"),
-    (8, 104, 3.0, "Spring2023"),
-    (1, 103, 3.8, "Fall2022"),
+# emp 1 = CEO (mgr_id NULL)
+# emp 6 has NULL salary (contractor)  -> AVG/COUNT semantics
+# emps 3 and 4 TIE at 95000           -> naive ORDER BY..LIMIT 1 is wrong
+# emp 7 has NO assignments            -> LEFT vs INNER JOIN discriminator
+# emp 1 and emp 2 TIE at the MAXIMUM salary (200000)
+#   -> "ORDER BY sal DESC LIMIT 1" returns ONE row; the correct
+#      "WHERE sal = (SELECT MAX(sal))" returns TWO. This is the trap.
+EMPLOYEES = [
+    (1, "Ada Lovelace",   "ENG", None, 200000, "2015-01-10"),  # CEO, tie for max
+    (2, "Grace Hopper",   "ENG", 1,    200000, "2017-03-22"),  # tie for max
+    (3, "Alan Turing",    "ENG", 2,     95000, "2019-06-01"),
+    (4, "Katherine J",    "ENG", 2,     95000, "2019-06-01"),
+    (5, "Linus T",        "SLS", 1,     88000, "2020-09-15"),
+    (6, "Contractor Bob", "SLS", 5,      None, "2023-01-05"),  # NULL salary
+    (7, "Idle Ian",       "RND", 1,     70000, "2021-11-30"),  # no assignments
+]
+
+# proj 30 has NO assignments -> discriminator
+PROJECTS = [
+    (10, "Compiler",   "ENG"),
+    (20, "CRM Rollout","SLS"),
+    (30, "Moonshot",   "RND"),   # nobody assigned
+]
+
+ASSIGNMENTS = [
+    (1, 10, 100),
+    (2, 10, 220),
+    (3, 10, 300),
+    (4, 10, 150),
+    (5, 20, 200),
+    (6, 20,  40),
+    # emp 7 deliberately absent
 ]
 
 
@@ -94,28 +132,38 @@ def build():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.executescript(SCHEMA)
-    cur.executemany("INSERT INTO departments VALUES (?,?,?)", DEPARTMENTS)
-    cur.executemany("INSERT INTO students VALUES (?,?,?,?,?)", STUDENTS)
-    cur.executemany("INSERT INTO courses VALUES (?,?,?,?)", COURSES)
-    cur.executemany("INSERT INTO enrollments VALUES (?,?,?,?)", ENROLLMENTS)
+    cur.executemany("INSERT INTO regions VALUES (?,?)", REGIONS)
+    cur.executemany("INSERT INTO depts VALUES (?,?,?)", DEPTS)
+    cur.executemany("INSERT INTO budgets VALUES (?,?,?)", BUDGETS)
+    cur.executemany("INSERT INTO employees VALUES (?,?,?,?,?,?)", EMPLOYEES)
+    cur.executemany("INSERT INTO projects VALUES (?,?,?)", PROJECTS)
+    cur.executemany("INSERT INTO assignments VALUES (?,?,?)", ASSIGNMENTS)
     conn.commit()
     conn.close()
     print(f"Built {DB_PATH}")
 
 
 def schema_text():
-    """Human/LLM-readable schema description injected into the prompt."""
+    """Schema description injected into the model prompt. Deliberately terse —
+    real schemas don't come with friendly explanations."""
     return """Tables:
-departments(dept_id, name, budget)
-students(student_id, name, dept_id, gpa, enrolled_year)
-courses(course_id, title, dept_id, credits)
-enrollments(student_id, course_id, grade, term)
+regions(region_cd, region_nm)
+depts(dept_cd, dept_nm, region_cd)
+budgets(dept_cd, fy, amt)
+employees(emp_id, emp_nm, dept_cd, mgr_id, sal, hire_dt)
+projects(proj_id, proj_nm, dept_cd)
+assignments(emp_id, proj_id, hrs)
 
 Foreign keys:
-students.dept_id -> departments.dept_id
-courses.dept_id -> departments.dept_id
-enrollments.student_id -> students.student_id
-enrollments.course_id -> courses.course_id"""
+depts.region_cd -> regions.region_cd
+budgets.dept_cd -> depts.dept_cd
+employees.dept_cd -> depts.dept_cd
+employees.mgr_id -> employees.emp_id
+projects.dept_cd -> depts.dept_cd
+assignments.emp_id -> employees.emp_id
+assignments.proj_id -> projects.proj_id
+
+Notes: sal and mgr_id and region_cd may be NULL. hire_dt is an ISO date string."""
 
 
 if __name__ == "__main__":

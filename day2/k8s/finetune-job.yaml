@@ -8,7 +8,7 @@ metadata:
   name: finetune-sql-lora
 spec:
   backoffLimit: 1          # retry once on failure
-  ttlSecondsAfterFinished: 3600   # auto-clean the pod an hour after it finishes
+  ttlSecondsAfterFinished: 86400   # auto-clean the pod an hour after it finishes
   template:
     metadata:
       labels:
@@ -32,6 +32,9 @@ spec:
               echo "=== installing training deps ==="
               pip install --no-cache-dir peft trl datasets accelerate bitsandbytes
 
+              echo "=== installing git ==="
+              apt-get update -qq && apt-get install -y -qq git
+
               echo "=== fetching project source ==="
               cd /workspace
               git clone --depth 1 --branch day2-mlops \
@@ -39,10 +42,10 @@ spec:
               cd repo/day2
 
               echo "=== preparing training data ==="
-              python prepare_training_data.py --n 5000 --out train.jsonl
+              python3 prepare_training_data.py --n 5000 --out train.jsonl
 
               echo "=== fine-tuning (QLoRA) ==="
-              python finetune.py \
+              python3 finetune.py \
                 --data train.jsonl \
                 --base-model Qwen/Qwen2.5-7B-Instruct \
                 --out /adapters/sql-lora \
