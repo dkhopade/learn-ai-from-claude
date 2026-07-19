@@ -1,0 +1,61 @@
+# NVIDIA DCGM Exporter — runs on GPU nodes, exposes GPU telemetry
+# (utilization, memory, temperature, power, SM clocks) in Prometheus format.
+# Deployed as a DaemonSet so it lands on every GPU node automatically.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dcgm-exporter
+  namespace: monitoring
+  labels:
+    app: dcgm-exporter
+spec:
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: dcgm-exporter
+      annotations:
+        prometheus.io/scrape: "true"      # <- makes Prometheus auto-discover it
+        prometheus.io/port: "9400"
+    spec:
+      # only schedule onto GPU nodes, and tolerate their taint
+      nodeSelector:
+        node-type: gpu
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: dcgm-exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+          ports:
+            - name: metrics
+              containerPort: 9400
+          securityContext:
+            capabilities:
+              add: ["SYS_ADMIN"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dcgm-exporter
+  namespace: monitoring
+  labels:
+    app: dcgm-exporter
+spec:
+  selector:
+    app: dcgm-exporter
+  ports:
+    - name: metrics
+      port: 9400
+      targetPort: 9400
+  type: ClusterIP

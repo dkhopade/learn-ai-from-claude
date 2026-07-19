@@ -1,0 +1,9 @@
+# Dedicated namespace for the observability stack.
+# Keeping monitoring separate from app workloads is the realistic pattern —
+# it isolates RBAC, resource limits, and makes teardown clean.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
