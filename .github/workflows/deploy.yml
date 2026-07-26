@@ -2,9 +2,10 @@ name: Build and Deploy to OKE
 
 on:
   push:
-    branches: [main]
+    branches: [main, day2-mlops]
     paths:
       - 'week5/**'
+      - 'day2/gateway/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:   # allows manual trigger from the Actions tab
 
@@ -17,6 +18,7 @@ env:
   OCIR_REGISTRY: iad.ocir.io
   BACKEND_REPO: learn-ai/ai-backend
   FRONTEND_REPO: learn-ai/ai-frontend
+  GATEWAY_REPO: learn-ai/ai-gateway
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -53,8 +55,19 @@ jobs:
             ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.FRONTEND_REPO }}:${{ env.IMAGE_TAG }}
             ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.FRONTEND_REPO }}:latest
 
+      - name: Build and push gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./day2/gateway
+          file: ./day2/gateway/Dockerfile
+          push: true
+          tags: |
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.GATEWAY_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.OCIR_REGISTRY }}/${{ env.OCIR_NAMESPACE }}/${{ env.GATEWAY_REPO }}:latest
+
   deploy:
     needs: build-and-push
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
