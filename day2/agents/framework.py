@@ -7,10 +7,16 @@ Delegation = one agent exposed as another agent's tool.
 Calls go through the Track C gateway, so every agent request is
 routed, cached, rate-limited, and metered automatically.
 
-Hard-won fixes baked in (from the first live run):
-  - dedup guard: identical tool calls are blocked and replay the cached result
-  - lenient parser: FINAL: anywhere in a reply wins (models sometimes emit both)
+Hard-won fixes baked in (from live runs):
+  Run 1 lessons:
+  - dedup guard: identical tool calls are blocked, cached result replayed
+  - lenient parser: FINAL: anywhere in a reply wins
   - observation visibility: tool results are printed, not just actions
+  Run 2 lessons (the error-laundering incident):
+  - error-aware dedup: repeating a FAILED call gets "fix it" guidance,
+    not "use this result" guidance
+  - typed sub-agent failure: a failed sub-agent returns an explicit
+    SUBAGENT FAILED marker the caller cannot mistake for data
 """
 import json
 import httpx
@@ -38,6 +44,13 @@ class Tool:
 
     def invoke(self, argument: str) -> str:
         return str(self.fn(argument))
+
+
+def _is_error(text: str) -> bool:
+    """Heuristic: does an observation/result represent a failure?"""
+    t = str(text).strip().upper()
+    return t.startswith("ERROR") or t.startswith("SQL ERROR") or \
+        t.startswith("SUBAGENT FAILED")
 
 
 class Agent:
@@ -98,11 +111,24 @@ FINAL: <your complete answer>"""
                     tool_name, argument = [p.strip() for p in body.split("|", 1)]
                     key = (tool_name, argument)
 
-                    # Dedup guard: don't re-run an identical call
                     if key in seen_calls:
-                        observation = (f"REPEAT BLOCKED. You already ran this; "
-                                       f"the result was: {seen_calls[key]}. "
-                                       f"Use it and respond with FINAL: now.")
+                        prior = seen_calls[key]
+                        # Error-aware dedup: a repeated FAILED call gets
+                        # repair guidance, not "use this result".
+                        if _is_error(prior):
+                            observation = (
+                                f"REPEAT BLOCKED. That exact call already "
+                                f"FAILED with: {prior}. Do NOT re-run it "
+                                f"unchanged — fix the problem (for SQL: check "
+                                f"your JOINs, table aliases, and column names "
+                                f"against the schema) and run a CORRECTED "
+                                f"version, or respond FINAL: reporting that "
+                                f"you could not retrieve the data.")
+                        else:
+                            observation = (
+                                f"REPEAT BLOCKED. You already ran this; the "
+                                f"result was: {prior}. Use it and respond "
+                                f"with FINAL: now.")
                     elif tool_name not in self.tools:
                         observation = f"ERROR: no tool named '{tool_name}'"
                     else:
@@ -111,14 +137,12 @@ FINAL: <your complete answer>"""
                 except Exception as e:
                     observation = f"ERROR invoking tool: {e}"
 
-                # Observation visibility: print tool results, not just actions
                 if verbose:
                     print(f"      -> obs: {str(observation)[:150]}")
                 history.append(f"Step {step+1}: called {reply}")
                 history.append(f"Observation: {observation}")
                 continue
 
-            # model didn't follow the protocol — nudge it
             history.append(f"Step {step+1}: your reply '{reply[:60]}' was not "
                            f"valid. Use TOOL: or FINAL: exactly.")
 
@@ -126,9 +150,20 @@ FINAL: <your complete answer>"""
 
 
 def agent_as_tool(agent: Agent, description: str) -> Tool:
-    """THE key multi-agent move: wrap an agent so another agent can call it."""
-    return Tool(
-        name=agent.name,
-        description=description,
-        fn=lambda objective: agent.run(objective, verbose=True),
-    )
+    """
+    THE key multi-agent move: wrap an agent so another agent can call it.
+
+    Typed failure: if the sub-agent errors out, the caller receives an
+    explicit SUBAGENT FAILED marker with instructions NOT to fabricate —
+    an error string must never be mistakable for data.
+    """
+    def _run(objective: str) -> str:
+        result = agent.run(objective, verbose=True)
+        if _is_error(result):
+            return ("SUBAGENT FAILED — no data was retrieved. Do not invent "
+                    "an answer from this. Either re-delegate with a "
+                    "differently-worded question, or respond FINAL: stating "
+                    "plainly that the data could not be obtained.")
+        return result
+
+    return Tool(name=agent.name, description=description, fn=_run)

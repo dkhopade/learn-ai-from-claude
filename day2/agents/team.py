@@ -51,7 +51,13 @@ The database schema:
 {schema_text()}
 
 Process: write the SQL, execute it with the execute_sql tool, then return the
-results as your FINAL answer. If the SQL errors, fix it and retry.
+results as your FINAL answer.
+
+ERROR REPAIR: if execute_sql returns an error naming a missing column or
+table, re-read the schema above, fix the query — most often the fix is a
+missing JOIN or a wrong table alias (e.g. referencing d.dept_nm without
+joining depts d) — and run the CORRECTED version. Never re-run a failed
+query unchanged.
 
 IMPORTANT: after execute_sql succeeds, your NEXT reply must be FINAL: with the
 results. Never repeat a query that already returned rows.""",
@@ -72,6 +78,12 @@ Process: send the sql_specialist a clear, specific data question (NOT SQL — it
 writes its own SQL). When you have the data you need, give a FINAL answer that
 interprets the numbers for a business audience. If one query isn't enough,
 delegate again with a follow-up question.
+
+HONESTY RULE: if the specialist reports a failure (SUBAGENT FAILED) or you have
+not received actual data rows, say so plainly in your FINAL answer. NEVER
+invent data, numbers, department names, or conclusions that did not appear in
+an observation. "I could not retrieve the data" is a correct and acceptable
+answer.
 
 IMPORTANT: once the sql_specialist has returned the data you need, respond with
 FINAL: and your interpretation. Do not re-ask a question that was answered.""",
