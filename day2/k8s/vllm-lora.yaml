@@ -52,6 +52,9 @@ spec:
             - "16"
             - "--lora-modules"
             - "sql-lora=/adapters/sql-lora"
+            - "--enable-auto-tool-choice"
+            - "--tool-call-parser"
+            - "hermes"
           ports:
             - containerPort: 8000
           resources:
