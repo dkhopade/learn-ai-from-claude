@@ -464,7 +464,18 @@
       <a class="nav-link" href="#stack"><span class="nav-num">→</span> Stack &amp; endpoints</a>
       <a class="nav-link" href="#gotchas"><span class="nav-num">!</span> Gotchas &amp; fixes</a>
       <a class="nav-link" href="#teardown"><span class="nav-num">→</span> Teardown</a>
-      <a class="nav-link" href="#roadmap"><span class="nav-num">»</span> What's next (Day 2)</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Day 2 — Operations</div>
+      <a class="nav-link" href="#why-day2"><span class="nav-num">§</span> Why Day 2 matters</a>
+      <a class="nav-link" href="#day2"><span class="nav-num">»</span> Day 1 → Day 2</a>
+      <a class="nav-link" href="#trackA"><span class="nav-num">A</span> Fine-tuning &amp; MLOps</a>
+      <a class="nav-link" href="#trackB"><span class="nav-num">B</span> Observability</a>
+      <a class="nav-link" href="#trackC"><span class="nav-num">C</span> Middleware gateway</a>
+      <a class="nav-link" href="#trackD"><span class="nav-num">D</span> Multi-agent team</a>
+      <a class="nav-link" href="#day2-lessons"><span class="nav-num">!</span> Day 2 lessons</a>
+      <a class="nav-link" href="#join-in"><span class="nav-num">↗</span> Share your take</a>
     </div>
   </aside>
 
@@ -730,47 +741,220 @@ POST /agent        autonomous tool-calling + memory</div>
         <p>Because every resource is Terraform-managed, teardown is complete and clean — no orphaned load balancers quietly billing, no manual console cleanup. And it all rebuilds from <code class="inline">terraform apply</code> whenever I want it back.</p>
       </section>
 
-      <!-- ROADMAP -->
-      <section id="roadmap">
-        <h2><span class="marker">»</span> What's next — Day 2</h2>
-        <p class="lede">Getting it running was Day 1. What separates a demo from a system is Day 2: keeping it updated, making it better, and being able to see and control what it costs. Here's what I'm building next.</p>
+      <!-- WHY DAY 2 MATTERS (for executives) -->
+      <section id="why-day2">
+        <h2><span class="marker">§</span> Why Day 2 matters</h2>
+        <p class="lede">A note for the people who fund, staff, and stake their reputation on AI systems — before the engineering detail. The demo that wows a boardroom and the system that survives ten thousand real users are two very different things. The gap between them is Day 2.</p>
 
-        <h3>1 · Lifecycle &amp; updates</h3>
-        <p>Right now a model or vLLM upgrade is a manual redeploy. The next step is treating the inference layer like any other production service with a real update path:</p>
-        <ul>
-          <li><strong>vLLM version upgrades</strong> — pin and roll vLLM image versions deliberately instead of <code class="inline">:latest</code>, with a canary step before promoting.</li>
-          <li><strong>Model swaps &amp; A/B</strong> — run two model versions behind the same service and shift traffic gradually, so a new model earns its rollout instead of a hard cutover.</li>
-          <li><strong>Persistent model cache</strong> — a PVC-backed Hugging Face cache so a pod restart doesn't re-download ~15GB of weights, cutting cold-start from minutes to seconds.</li>
-          <li><strong>GPU autoscaling</strong> — scale the GPU pool to zero when idle and back up on demand (Karpenter-style provisioning), so the expensive hardware only exists when there's work.</li>
-        </ul>
+        <p>Almost every organization can now stand up an impressive AI demo in a week. That's Day 1, and it's genuinely valuable — it proves the idea works. But a demo answers one question, once, for one person who is rooting for it to succeed. A <em>production</em> AI system answers thousands of questions, for people who don't care how clever it is, at a cost that shows up on a real invoice, with a failure mode that can quietly mislead someone before anyone notices. Getting from the first to the second is not a bigger demo. It's a different discipline.</p>
 
-        <h3>2 · Model improvement</h3>
-        <p>The base model is a starting point. Making it genuinely good for a specific domain is its own discipline:</p>
+        <h3>What changes when the system is real</h3>
+        <p>Three pressures arrive the moment an AI system leaves the demo stage, and each maps to a Day 2 capability:</p>
         <ul>
-          <li><strong>Fine-tuning</strong> — LoRA / QLoRA adapters on domain data, served by vLLM alongside the base weights, to lift answer quality without retraining from scratch.</li>
-          <li><strong>An eval harness</strong> — a real evaluation set and scoring (retrieval hit-rate, answer faithfulness, tool-call accuracy) so "is the new model better?" is a measured answer, not a vibe. This gates the A/B rollouts above.</li>
-          <li><strong>Retrieval quality</strong> — chunking strategy, re-ranking, and embedding-model comparisons, measured against the eval set rather than guessed.</li>
-        </ul>
-
-        <h3>3 · Observability &amp; cost control</h3>
-        <p>The piece I care about most as an operator: you cannot run what you cannot see. Full-stack visibility, top to bottom — app through GPU — with cost as a first-class signal:</p>
-        <ul>
-          <li><strong>App &amp; API tracing</strong> — OpenTelemetry spans across the request path (frontend → backend → retrieval → LLM call) so a slow answer can be traced to the exact hop that caused it.</li>
-          <li><strong>Middleware &amp; dependency metrics</strong> — latency and error rates for Qdrant queries, vLLM calls, and external tool APIs, surfaced as SLIs.</li>
-          <li><strong>Cluster &amp; infra metrics</strong> — Prometheus + Grafana for node, pod, and control-plane health across the whole OKE cluster.</li>
-          <li><strong>GPU observability</strong> — the NVIDIA DCGM exporter feeding Prometheus: utilization, memory, temperature, and throughput per GPU. This is where performance tuning actually happens — is the A10 saturated, or paying for idle silicon?</li>
-          <li><strong>Cost control</strong> — tie GPU-hours and utilization together so cost per request is visible, idle spend is obvious, and autoscaling decisions are driven by data. On accelerators, cost <em>is</em> a performance metric.</li>
+          <li><strong>Scale brings cost, and cost brings scrutiny.</strong> A GPU that costs a few dollars an hour for one demo user becomes a five- or six-figure line item when a whole team — or your customers — depend on it. Leadership will, correctly, ask: what are we paying per answer, and is that money buying useful work or idle silicon? Without observability and cost controls, no one can answer. <em>(Tracks B and C.)</em></li>
+          <li><strong>"Is it good?" becomes a question you must answer with data.</strong> When one team ships a model and another wants to improve it, "it feels better" doesn't survive a room full of stakeholders. You need a measured, repeatable way to say a change helped — or, just as importantly, that it didn't. Otherwise every model update is a gamble dressed up as progress. <em>(Track A.)</em></li>
+          <li><strong>Trust becomes the whole product.</strong> A demo that's confidently wrong is a funny story. A production system that's confidently wrong — to a customer, in a contract, about a number — is a liability. As AI systems get chained together (agents calling agents, tools calling models), a small error can get laundered into a plausible, authoritative-sounding lie by the time it reaches a human. Engineering for honest failure isn't polish; it's the difference between a tool people trust and one they quietly stop using. <em>(Track D.)</em></li>
         </ul>
 
         <div class="callout">
-          <span class="clabel">The throughline, again</span>
-          Day 1 proves you can build it. Day 2 proves you can run it — update it safely, improve it measurably, and see and control what it costs down to the GPU. That operator's view is where I'm taking this next.
+          <span class="clabel">The executive summary</span>
+          Day 1 answers "can we build it?" Day 2 answers the questions that actually determine whether an AI system lives or dies in production: <strong>Can we afford it? Can we prove it's getting better? Can we trust what it tells people?</strong> Those are business questions, and they're answered by operational engineering — not by a better demo.
         </div>
+
+        <p>The tracks that follow are my hands-on attempt to build every one of those Day 2 capabilities from the ground up — fine-tuning with real evaluation, full-stack observability with cost as a first-class signal, a control layer in front of the models, and multi-agent coordination that fails honestly. Not because any single piece is novel, but because <em>operating</em> AI — not just building it — is where real-world systems succeed or fail. And the only way I know to genuinely understand that is to build it by hand and let it break.</p>
+      </section>
+
+      <!-- DAY 1 -> DAY 2 BRIDGE -->
+      <section id="day2">
+        <h2><span class="marker">»</span> Day 1 → Day 2</h2>
+        <p class="lede">Day 1 proved I could build it. Day 2 proved I could operate it — fine-tune the model and measure whether it helped, see everything from GPU silicon to cost-per-token, put a real gateway in front of it, and get multiple agents collaborating on real work. Four tracks, all built by hand, all debugged from real failures.</p>
+
+        <p>The same discipline ran through every track: <strong>build and validate on CPU, spin the GPU up only for the irreducible work, tear it down immediately.</strong> And a recurring truth — the hard part was almost never the happy path. Most of the learning came from things breaking: a saturated benchmark, a library that renamed an argument under me, a container missing <code class="inline">git</code>, agents laundering an error into a confident lie. Each one is called out below, because the fix <em>was</em> the lesson.</p>
+
+        <div class="chips">
+          <span class="chip"><b>A</b> LoRA · MLflow · eval</span>
+          <span class="chip"><b>B</b> Prometheus · Grafana · DCGM</span>
+          <span class="chip"><b>C</b> FastAPI gateway · cache</span>
+          <span class="chip"><b>D</b> multi-agent · MCP-style tools</span>
+        </div>
+
+        <div class="callout">
+          <span class="clabel">Where it landed</span>
+          One vLLM serving the base model <em>plus</em> a fine-tuned LoRA adapter <em>plus</em> native tool-calling; a gateway routing, caching, and metering every request; full observability from GPU to token to dollar; and a two-agent team that reasons visibly in the UI. Three live modes — RAG, Agent, Team — running together in production.
+        </div>
+      </section>
+
+      <!-- TRACK A -->
+      <section id="trackA">
+        <h2><span class="marker">A</span> Fine-tuning &amp; MLOps</h2>
+        <p class="lede">Fine-tune Qwen2.5-7B for text-to-SQL — and, more importantly, <em>measure</em> whether it actually improved. The measurement discipline mattered more than the training.</p>
+
+        <p>The plan: build an evaluation harness first, get a baseline, fine-tune with a LoRA adapter, then re-measure. The order is deliberate — you can't tell if fine-tuning helped without a number to beat, so the baseline comes <em>before</em> the training, not after.</p>
+
+        <h3>Evaluation, done right</h3>
+        <p>The harness scores generated SQL by <strong>executing it</strong> against a real database and comparing the <em>result set</em> to a gold query — not by comparing query strings. SQL can be written many correct ways, so only the returned rows are a fair test. This is the same execution-based methodology academic benchmarks (Spider, BIRD) use.</p>
+
+        <div class="callout warn">
+          <span class="clabel">Gotcha — benchmark saturation</span>
+          My first eval set was too easy: base Qwen scored <strong>100%</strong>. That's not a triumph — it's a broken experiment. With zero headroom, fine-tuning <em>cannot</em> show improvement. The eval was rebuilt to be adversarial — ugly schema, ties at the maximum salary, empty departments, NULLs — so wrong-but-plausible queries give visibly different answers. An eval only has signal where the model can fail.
+        </div>
+
+        <p>The harness also validates <em>itself</em>: it scores the gold SQL against itself and must hit 100%. That check caught two bugs in my own eval design before they could corrupt real results. An eval is software too — it needs testing.</p>
+
+        <h3>LoRA — specializing a 7B on a 24GB GPU</h3>
+        <p>Full fine-tuning of a 7B model needs ~60GB+ of GPU memory — it won't fit on a 24GB A10. LoRA freezes the model and trains tiny adapter matrices instead — about <strong>0.5% of the parameters</strong>. QLoRA additionally loads the frozen model in 4-bit to shrink memory ~4×. The output is a small adapter served <em>on top of</em> the base weights.</p>
+
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">training log</span></div>
+          <div class="term-body"><span class="out">trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273</span><span class="comment"># 40M trainable of 7.6B — and the saved adapter is ~80 MB, not 15 GB</span></div>
+        </div>
+
+        <p>Training ran as a Kubernetes <strong>Job</strong> (runs to completion, unlike a Deployment) on the GPU node, writing the adapter to a shared PVC that vLLM later mounts to serve it. Watching GPU utilization sit at 100% and memory at ~46% via <code class="inline">nvidia-smi</code> made the QLoRA memory savings concrete.</p>
+
+        <h3>The honest result</h3>
+        <p>Base Qwen scored <strong>81.2%</strong> on the hard eval; the fine-tuned adapter scored <strong>87.5%</strong>. A small, real, <em>believable</em> lift — and inspecting the failures showed the base model's "mistakes" were often correct-but-cosmetically-different SQL. The mature MLOps takeaway: a modern 7B is already strong at SQL, we measured rather than assumed, and "we found little headroom and didn't ship a pointless model" is a legitimate outcome.</p>
+
+        <div class="callout">
+          <span class="clabel">The real lesson</span>
+          Never trust the aggregate metric — inspect the failures. An 81.2% looked like weakness; the failures showed correct SQL with cosmetic differences. The score was true; the naive interpretation would have been false.
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Environment gotchas that cost real time</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Python 3.14 was too new for MLflow (dropped to 3.12). MLflow's file-store backend was deprecated (switched to SQLite). The <code class="inline">trl</code> library renamed <code class="inline">max_seq_length</code> to <code class="inline">max_length</code> — a one-line fix found only by reading the crash. The training container was missing <code class="inline">git</code>, and had <code class="inline">python3</code> but not <code class="inline">python</code>. A too-aggressive Job TTL deleted the training logs before I could read them. None of these are in tutorials — they're the texture of real ML infra work.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRACK B -->
+      <section id="trackB">
+        <h2><span class="marker">B</span> Observability &amp; cost</h2>
+        <p class="lede">See everything the system does — cluster, GPU, application, and cost — built by hand from plain manifests so every layer is understood, not black-boxed.</p>
+
+        <p>The stack, in dependency order: <strong>Prometheus</strong> (collects and stores metrics) → <strong>DCGM exporter</strong> (GPU telemetry) → <strong>Grafana</strong> (dashboards) → app metrics → a token-economics view. All in a dedicated <code class="inline">monitoring</code> namespace.</p>
+
+        <h3>The pull model + opt-in discovery</h3>
+        <p>Prometheus <em>scrapes</em> (pulls) metrics on an interval rather than receiving them, using the Kubernetes API to discover what exists (which is why it needs RBAC — a ServiceAccount, ClusterRole, and binding). The elegant part: any pod annotated <code class="inline">prometheus.io/scrape: "true"</code> gets discovered automatically. So DCGM, vLLM, and the gateway all joined monitoring later <em>without touching the scrape config again</em>.</p>
+
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-label">bash</span><button class="term-copy" onclick="copyTerm(this)">copy</button></div>
+          <div class="term-body"><span class="comment"># build the whole monitoring stack from plain manifests</span><span class="cmd" data-c="kubectl apply -f day2/k8s/monitoring/">kubectl apply -f day2/k8s/monitoring/</span><span class="comment"># DCGM turns nvidia-smi into a live, historical dashboard</span></div>
+        </div>
+
+        <h3>GPU as a dashboard, cost as a metric</h3>
+        <p>The NVIDIA DCGM exporter (a DaemonSet on GPU nodes) feeds Prometheus GPU utilization, memory, temperature, and power. Watching power and temperature climb as a model loaded, then utilization spike during inference, made the physical reality of the hardware tangible.</p>
+
+        <p>The piece I most wanted: a <strong>token-economics dashboard</strong> tying GPU utilization (DCGM) and token throughput (vLLM) to a fixed hourly GPU cost. A GPU costs the same whether busy or idle — so the economic question is tokens-per-dollar. High utilization + high throughput = low cost-per-token. On accelerators, <em>cost is a performance metric</em>.</p>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">First-setup gotchas</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Grafana reaches Prometheus by its <em>service DNS name</em> (<code class="inline">prometheus.monitoring.svc:9090</code>), not <code class="inline">localhost</code> — separate pods talk over the cluster network. The CRI-O fully-qualified-image-name rule from Day 1 applied again (<code class="inline">docker.io/prom/prometheus:...</code>). And on macOS, the Grafana/Prometheus UIs load at <code class="inline">127.0.0.1</code>, not <code class="inline">localhost</code> (an IPv6 quirk). The DCGM pod sits <code class="inline">Pending</code> when the GPU is down — expected, not broken.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRACK C -->
+      <section id="trackC">
+        <h2><span class="marker">C</span> Middleware gateway</h2>
+        <p class="lede">A FastAPI gateway between clients and the model — routing, caching, rate limiting, metrics. The same middleware patterns from classic web engineering, applied to LLM serving.</p>
+
+        <p>In production, clients shouldn't hit the model directly. A gateway is the control point for cost, safety, and observability — one front door with policy. Four capabilities, each validated on CPU with a mock upstream before any GPU spend:</p>
+
+        <ul>
+          <li><strong>Routing</strong> — a request's <code class="inline">task</code> field picks the model: <code class="inline">sql</code> → the fine-tuned adapter, everything else → base. Model selection becomes architecture, not a per-request detail.</li>
+          <li><strong>Caching</strong> — hash the (model, prompt, params) and check a cache before calling the GPU. A hit returns instantly with <em>zero GPU time</em>. Only deterministic (temperature 0) requests are cached — caching random output would be wrong.</li>
+          <li><strong>Rate limiting</strong> — a token-bucket limiter allows short bursts but caps sustained rate, rejecting excess with a cheap HTTP 429 instead of overwhelming the GPU.</li>
+          <li><strong>Metrics</strong> — every request, cache event, and rejection is counted and labeled, feeding the Track B Grafana stack.</li>
+        </ul>
+
+        <div class="callout">
+          <span class="clabel">The demo that proves it</span>
+          The same request, twice: the first is a cache <em>miss</em> — a few seconds, GPU utilization spikes on the dashboard. The second is a cache <em>hit</em> — instant, <code class="inline">"cached": true</code>, and the GPU dashboard stays flat. That flat line during a served request is cost savings, made visible.
+        </div>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Deployment gotcha — the SHA-pinned image trap</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>After pushing new images, the UI still showed the old version. The cause: the deployments were pinned to a specific commit SHA from an earlier deploy — so restarts faithfully re-pulled the <em>old</em> image forever, regardless of <code class="inline">imagePullPolicy</code>. The fix is <code class="inline">kubectl set image</code> with the new SHA. Also classic: a container server must bind <code class="inline">--host 0.0.0.0</code>, not localhost, to be reachable.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRACK D -->
+      <section id="trackD">
+        <h2><span class="marker">D</span> Multi-agent team</h2>
+        <p class="lede">Two specialized agents collaborating on real work — an Analyst that orchestrates and a SQL Specialist that queries a database — with their reasoning shown live in the UI.</p>
+
+        <p>Built by hand from primitives to understand the machinery: an <strong>Agent</strong> is a role plus tools plus a reasoning loop (reason → act → observe → repeat). The key move is <strong>delegation as composition</strong> — one agent wrapped as another agent's tool. The Specialist becomes a callable capability of the Analyst. That's the whole multi-agent idea in a few lines.</p>
+
+        <p>Each agent routes to the right model through the Track C gateway: the Specialist to the fine-tuned <code class="inline">sql-lora</code> adapter, the Analyst to the base model. Two models, two roles, selected by architecture. The Specialist's tool <em>actually executes SQL</em> — real actions, not stubs.</p>
+
+        <div class="callout warn">
+          <span class="clabel">Gotcha — error laundering (the deepest lesson)</span>
+          In one run, the Specialist's SQL errored, the error propagated up, and the Analyst <em>hallucinated a confident, wrong answer from it</em> — inventing departments that don't exist. This is <em>the</em> failure mode of multi-agent systems: errors don't just fail, they get laundered into plausible fiction as they pass between agents. A single-agent error is visible; a multi-agent error arrives wearing a business-friendly summary.
+        </div>
+
+        <p>The fixes turned "error → fiction" into "error → honest failure or self-repair": <strong>typed failure markers</strong> (a sub-agent failure can't be mistaken for data), <strong>error-aware deduplication</strong> ("that failed — fix it" rather than "use this result"), and an explicit <strong>honesty rule</strong> ("never invent data; 'I couldn't retrieve it' is an acceptable answer"). On the same question afterward, the Specialist repaired its own missing JOIN and returned the correct answer. Same models — the difference was entirely the engineering around them.</p>
+
+        <h3>Watching agents think, live in the UI</h3>
+        <p>A backend SSE endpoint runs the team and streams each reasoning step to the browser; a React panel renders them as a color-coded timeline — who acted, what they did, and why — then the final answer. The bridge between synchronous agents and a streaming UI is a queue: the agent thread pushes events in, the SSE generator pulls them out as they happen.</p>
+
+        <div class="fold">
+          <div class="fold-head" onclick="toggleFold(this)"><span class="fold-chevron">▶</span><span class="fold-title">Integration gotchas</span><span class="fold-tag gotcha">gotcha</span></div>
+          <div class="fold-body">
+            <p>Python imports differ between running a script directly (<code class="inline">from framework import</code>) and importing it as a package (<code class="inline">from .framework import</code>) — needing a try/except import and an <code class="inline">__init__.py</code>. The Docker build context had to move to the repo root so the backend image could include the agents code. And the LoRA-serving vLLM manifest had dropped the tool-calling flags (<code class="inline">--enable-auto-tool-choice</code>, <code class="inline">--tool-call-parser hermes</code>), which broke Day 1's Agent mode until re-added — the final manifest now serves RAG, the SQL adapter, the agent team, <em>and</em> native tool-calling from one vLLM.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- DAY 2 LESSONS -->
+      <section id="day2-lessons">
+        <h2><span class="marker">!</span> Day 2 lessons</h2>
+        <p class="lede">Beyond any single track, the themes worth carrying forward — most of them learned the hard way.</p>
+
+        <ul>
+          <li><strong>Measure before you optimize.</strong> The eval built first revealed the model was already good, saving a pointless fine-tune. You can't improve what you can't measure — or trust a measurement you haven't validated.</li>
+          <li><strong>Inspect failures, never just the aggregate.</strong> A true score with a false interpretation is worse than no score.</li>
+          <li><strong>The ecosystem drifts under you.</strong> Renamed arguments, deprecated backends, too-new Python — each a one-line fix once diagnosed. Working at the frontier means libraries move faster than tutorials.</li>
+          <li><strong>Containers are minimal; assume nothing.</strong> Missing <code class="inline">git</code>, <code class="inline">python</code> vs <code class="inline">python3</code>, fully-qualified image names, <code class="inline">--host 0.0.0.0</code>.</li>
+          <li><strong>Preserve your evidence.</strong> A too-aggressive Job TTL deleted logs before they could be read. Observability applies to your own build process, not just the app.</li>
+          <li><strong>Errors compound in multi-agent systems.</strong> Typed failures and honesty rules aren't polish — they're the core engineering.</li>
+          <li><strong>Cost is a first-class metric.</strong> Build on CPU, GPU only for the irreducible work, tear down immediately. On accelerators, cost and performance are two views of the same thing.</li>
+        </ul>
+
+        <div class="callout">
+          <span class="clabel">The throughline</span>
+          Day 1 proved I could build it. Day 2 proved I could run it — update it safely, improve it measurably, coordinate agents over it, and see and control what it costs down to the GPU. Every layer built by hand, every failure diagnosed live. The muscle memory was the deliverable.
+        </div>
+      </section>
+
+      <!-- JOIN IN / CTA -->
+      <section id="join-in">
+        <h2><span class="marker">↗</span> Your turn — share your take</h2>
+        <p class="lede">This is a learning project, and the best part of learning in the open is what comes back. I'd genuinely love to hear how you'd approach any of this.</p>
+
+        <p>There's no single right way to build and operate AI systems, and I'm certain some of my choices here have better alternatives. So if any of this sparked a thought, I want to hear it:</p>
+        <ul>
+          <li><strong>Would you have done it differently?</strong> A different eval strategy, a managed observability stack instead of hand-rolled Prometheus, an off-the-shelf gateway, a real agent framework over my hand-built one — tell me what you'd change and why.</li>
+          <li><strong>Have you shipped something like this for real?</strong> War stories from production AI — what broke, what surprised you, what you wish you'd known on Day 1 — are worth more than any tutorial.</li>
+          <li><strong>Are you on the same journey?</strong> If you're learning this by building it too, I'd love to compare notes, swap gotchas, and cheer each other on.</li>
+          <li><strong>Did something here help you?</strong> That alone would make my day — let me know which part.</li>
+        </ul>
+
+        <div class="callout">
+          <span class="clabel">Let's talk</span>
+          Reach out on <a href="https://www.linkedin.com/in/deepak-khopade/" target="_blank" rel="noopener noreferrer">LinkedIn</a>, or open an issue or discussion on the <a href="https://github.com/dkhopade/learn-ai-from-claude" target="_blank" rel="noopener noreferrer">GitHub repo</a>. Feedback, corrections, better ideas, or just a hello — all welcome. The whole point of building in the open is to learn together.
+        </div>
+
+        <p>And if you want to actually run any of this yourself, everything — the code, the Terraform, the manifests, all four Day 2 tracks — is public in the repo. Fork it, break it, improve it. That's exactly what it's there for.</p>
       </section>
 
       <div class="foot">
         Built end to end · FastAPI · React · Qdrant · vLLM · OKE · Terraform · GitHub Actions<br>
-        A learning project — the muscle memory was the deliverable. Day 2 is where it becomes a system.
+        Day 2 · LoRA · MLflow · Prometheus · Grafana · DCGM · gateway · multi-agent<br>
+        A learning project — the muscle memory was the deliverable. Day 2 is where it became a system.
       </div>
 
     </div>
