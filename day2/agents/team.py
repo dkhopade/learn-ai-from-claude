@@ -14,8 +14,10 @@ import sqlite3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from build_db import build, schema_text, DB_PATH
 
-from framework import Agent, Tool, agent_as_tool
-
+try:
+    from .framework import Agent, Tool, agent_as_tool   # package import (container)
+except ImportError:
+    from framework import Agent, Tool, agent_as_tool     # direct script run (local)
 
 # ── the real action: execute SQL ──────────────────────────────────────────
 def run_sql(sql: str) -> str:
