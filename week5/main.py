@@ -8,6 +8,8 @@ import os
 from tools import embed_model, qdrant, init_knowledge_base
 from agent import run_agent
 from llm_client import generate, LLM_MODEL
+from agent_routes import router as agent_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,6 +19,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(agent_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import AgentTeamPanel from "./AgentTeamPanel";
 
 const API = process.env.REACT_APP_API_URL || "/api"; //set this to `const API = "http://localhost:8000";` when running locally
 
@@ -116,7 +117,9 @@ export default function App() {
         <div>
           <h1 style={styles.title}>AI Knowledge Assistant</h1>
           <p style={styles.subtitle}>
-            {mode === "rag" ? "RAG mode — answers from your docs" : "Agent mode — uses tools"}
+            {mode === "rag" ? "RAG mode — answers from your docs"
+              : mode === "agent" ? "Agent mode — uses tools"
+              : "Team mode — two agents collaborate, reasoning shown live"}
           </p>
         </div>
         <div style={styles.headerRight}>
@@ -129,6 +132,10 @@ export default function App() {
               style={mode === "agent" ? styles.toggleActive : styles.toggleBtn}
               onClick={() => setMode("agent")}
             >Agent</button>
+            <button
+              style={mode === "team" ? styles.toggleActive : styles.toggleBtn}
+              onClick={() => setMode("team")}
+            >Team</button>
           </div>
           <button onClick={() => setMessages([])} style={styles.clearBtn}>Clear</button>
           <a
@@ -140,6 +147,12 @@ export default function App() {
         </div>
       </div>
 
+      {mode === "team" ? (
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <AgentTeamPanel apiBase={API} />
+        </div>
+      ) : (
+      <>
       <div style={styles.messages}>
         {messages.length === 0 && (
           <div style={styles.empty}>
@@ -190,6 +203,8 @@ export default function App() {
           {loading ? "..." : "Send"}
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

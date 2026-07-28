@@ -8,20 +8,30 @@ Calls go through the Track C gateway, so every agent request is
 routed, cached, rate-limited, and metered automatically.
 
 Hard-won fixes baked in (from live runs):
-  Run 1 lessons:
-  - dedup guard: identical tool calls are blocked, cached result replayed
-  - lenient parser: FINAL: anywhere in a reply wins
-  - observation visibility: tool results are printed, not just actions
-  Run 2 lessons (the error-laundering incident):
-  - error-aware dedup: repeating a FAILED call gets "fix it" guidance,
-    not "use this result" guidance
-  - typed sub-agent failure: a failed sub-agent returns an explicit
-    SUBAGENT FAILED marker the caller cannot mistake for data
+  Run 1: dedup guard, lenient FINAL parser, observation visibility
+  Run 2: error-aware dedup, typed SUBAGENT FAILED markers, honesty rules
+
+UI streaming support:
+  Agents emit structured events (who / what / why) to a module-level
+  EVENT_SINK. The backend sets the sink to stream steps to the UI via SSE.
+  NOTE: a module-level sink is a deliberate simplicity tradeoff — fine for
+  single-request demos; you'd redesign this (per-request context) for
+  concurrent production use.
 """
 import json
+import os
 import httpx
 
-GATEWAY_URL = "http://localhost:8080"   # the Track C gateway (port-forwarded)
+GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8080")
+
+# ── event sink: set by the caller so ALL agents' events flow one place ────
+EVENT_SINK = None
+
+
+def set_event_sink(fn):
+    """fn(event_dict) will be called for every agent event. Pass None to clear."""
+    global EVENT_SINK
+    EVENT_SINK = fn
 
 
 def call_llm(prompt: str, task: str = "general", max_tokens: int = 512) -> str:
@@ -74,6 +84,13 @@ class Agent:
         lines = [f"- {t.name}: {t.description}" for t in self.tools.values()]
         return "Available tools:\n" + "\n".join(lines)
 
+    def _emit(self, kind: str, detail: str, why: str = "", verbose: bool = True):
+        evt = {"agent": self.name, "kind": kind, "detail": detail, "why": why}
+        if EVENT_SINK:
+            EVENT_SINK(evt)
+        if verbose:
+            print(f"  [{self.name} {kind}] {detail[:120]}")
+
     def run(self, objective: str, verbose: bool = True) -> str:
         """
         The reasoning loop. Each step, the agent either:
@@ -82,6 +99,9 @@ class Agent:
         """
         history = []
         seen_calls = {}                     # (tool, arg) -> observation (dedup)
+
+        self._emit("start", objective, why="received objective", verbose=verbose)
+
         for step in range(self.max_steps):
             prompt = f"""{self.role}
 
@@ -97,13 +117,14 @@ TOOL: <tool_name> | <argument>
 FINAL: <your complete answer>"""
 
             reply = call_llm(prompt, task=self.task_type).strip()
-            if verbose:
-                print(f"  [{self.name} step {step+1}] {reply[:120]}")
 
             # Lenient parse: a FINAL anywhere wins — models sometimes emit
             # both a TOOL line and a FINAL line in one reply.
             if "FINAL:" in reply:
-                return reply.split("FINAL:", 1)[1].strip()
+                answer = reply.split("FINAL:", 1)[1].strip()
+                self._emit("final", answer, why="objective satisfied",
+                           verbose=verbose)
+                return answer
 
             if reply.startswith("TOOL:"):
                 try:
@@ -111,10 +132,12 @@ FINAL: <your complete answer>"""
                     tool_name, argument = [p.strip() for p in body.split("|", 1)]
                     key = (tool_name, argument)
 
+                    self._emit("tool_call", f"{tool_name} | {argument}",
+                               why=f"step {step+1}: acting toward the objective",
+                               verbose=verbose)
+
                     if key in seen_calls:
                         prior = seen_calls[key]
-                        # Error-aware dedup: a repeated FAILED call gets
-                        # repair guidance, not "use this result".
                         if _is_error(prior):
                             observation = (
                                 f"REPEAT BLOCKED. That exact call already "
@@ -137,8 +160,8 @@ FINAL: <your complete answer>"""
                 except Exception as e:
                     observation = f"ERROR invoking tool: {e}"
 
-                if verbose:
-                    print(f"      -> obs: {str(observation)[:150]}")
+                self._emit("observation", str(observation)[:300],
+                           why="result of the tool call", verbose=verbose)
                 history.append(f"Step {step+1}: called {reply}")
                 history.append(f"Observation: {observation}")
                 continue
@@ -146,6 +169,8 @@ FINAL: <your complete answer>"""
             history.append(f"Step {step+1}: your reply '{reply[:60]}' was not "
                            f"valid. Use TOOL: or FINAL: exactly.")
 
+        self._emit("error", "step budget exhausted", why="loop safety limit",
+                   verbose=verbose)
         return "ERROR: step budget exhausted without a FINAL answer."
 
 
@@ -154,8 +179,7 @@ def agent_as_tool(agent: Agent, description: str) -> Tool:
     THE key multi-agent move: wrap an agent so another agent can call it.
 
     Typed failure: if the sub-agent errors out, the caller receives an
-    explicit SUBAGENT FAILED marker with instructions NOT to fabricate —
-    an error string must never be mistakable for data.
+    explicit SUBAGENT FAILED marker with instructions NOT to fabricate.
     """
     def _run(objective: str) -> str:
         result = agent.run(objective, verbose=True)
