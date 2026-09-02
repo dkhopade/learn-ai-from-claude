@@ -1,0 +1,58 @@
+[
+  {
+    "concurrency": 1,
+    "sessions_ok": 1,
+    "sessions_failed": 0,
+    "sessions_hit_429": 0,
+    "gateway_429s": 0,
+    "wall_s": 4.78,
+    "throughput_sessions_per_s": 0.209,
+    "latency_min_s": 4.78,
+    "latency_median_s": 4.78,
+    "latency_max_s": 4.78,
+    "prefix_cache_tokens_queried": 1556,
+    "prefix_cache_hit_pct": 97.7
+  },
+  {
+    "concurrency": 2,
+    "sessions_ok": 2,
+    "sessions_failed": 0,
+    "sessions_hit_429": 0,
+    "gateway_429s": 0,
+    "wall_s": 7.02,
+    "throughput_sessions_per_s": 0.285,
+    "latency_min_s": 3.77,
+    "latency_median_s": 7.02,
+    "latency_max_s": 7.02,
+    "prefix_cache_tokens_queried": 3074,
+    "prefix_cache_hit_pct": 97.3
+  },
+  {
+    "concurrency": 4,
+    "sessions_ok": 2,
+    "sessions_failed": 2,
+    "sessions_hit_429": 2,
+    "gateway_429s": 4.0,
+    "wall_s": 5.51,
+    "throughput_sessions_per_s": 0.363,
+    "latency_min_s": 1.2,
+    "latency_median_s": 4.64,
+    "latency_max_s": 5.51,
+    "prefix_cache_tokens_queried": 3631,
+    "prefix_cache_hit_pct": 96.1
+  },
+  {
+    "concurrency": 8,
+    "sessions_ok": 1,
+    "sessions_failed": 7,
+    "sessions_hit_429": 7,
+    "gateway_429s": 11.0,
+    "wall_s": 4.77,
+    "throughput_sessions_per_s": 0.21,
+    "latency_min_s": 0.42,
+    "latency_median_s": 1.24,
+    "latency_max_s": 4.77,
+    "prefix_cache_tokens_queried": 2735,
+    "prefix_cache_hit_pct": 97.1
+  }
+]

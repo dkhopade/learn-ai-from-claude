@@ -102,9 +102,24 @@ FINAL: and your interpretation. Do not re-ask a question that was answered.""",
 
 
 if __name__ == "__main__":
-    build()   # ensure the eval DB exists
+    import agentmetrics as metrics
+
+    # build() is NOT concurrency-safe: two processes racing on
+    # executescript(SCHEMA) both CREATE TABLE and the loser dies with
+    # "table depts already exists". The concurrency harness prebuilds it once
+    # in the parent and sets SKIP_DB_BUILD=1 for the children.
+    if os.getenv("SKIP_DB_BUILD") != "1":
+        build()
     question = sys.argv[1] if len(sys.argv) > 1 else \
         "Which department has the most employees, and what is its average salary?"
+    label = os.getenv("RUN_LABEL", "baseline")
+
     print(f"\n=== QUESTION: {question}\n")
-    answer = analyst.run(question)
+    metrics.start_run(question)
+    try:
+        answer = analyst.run(question)
+    finally:
+        # Record the run even if the agent loop blows up — a failed run is
+        # still a data point, and often an expensive one.
+        metrics.finish_run(label=label)
     print(f"\n=== FINAL ANSWER ===\n{answer}")

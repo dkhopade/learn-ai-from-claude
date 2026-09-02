@@ -1,0 +1,23 @@
+label,question,step,agent,task,prompt_chars,response_chars,latency_ms,cached
+rightsizing,List every employee together with their department name.,1,analyst,general,1243,78,725.65,False
+rightsizing,List every employee together with their department name.,2,sql_specialist,sql,1559,112,1608.42,False
+rightsizing,List every employee together with their department name.,3,sql_specialist,sql,1935,227,2967.87,False
+rightsizing,List every employee together with their department name.,4,analyst,general,1585,403,3071.74,False
+rightsizing,How many projects does each employee work on?,1,analyst,general,1232,68,713.88,False
+rightsizing,How many projects does each employee work on?,2,sql_specialist,sql,1549,145,1541.07,False
+rightsizing,How many projects does each employee work on?,3,sql_specialist,sql,1786,250,2846.86,False
+rightsizing,How many projects does each employee work on?,4,analyst,general,1587,191,1616.81,False
+rightsizing,Which employees earn more than the average salary?,1,analyst,general,1237,73,767.81,False
+rightsizing,Which employees earn more than the average salary?,2,sql_specialist,sql,1554,106,1130.18,False
+rightsizing,Which employees earn more than the average salary?,3,sql_specialist,sql,1759,106,1128.85,False
+rightsizing,Which employees earn more than the average salary?,4,sql_specialist,sql,2041,62,1425.4,False
+rightsizing,Which employees earn more than the average salary?,5,analyst,general,1409,116,1194.48,False
+rightsizing,What is the lowest salary in each department?,1,analyst,general,1232,68,714.85,False
+rightsizing,What is the lowest salary in each department?,2,sql_specialist,sql,1549,85,1126.65,False
+rightsizing,What is the lowest salary in each department?,3,sql_specialist,sql,1722,106,1786.82,False
+rightsizing,What is the lowest salary in each department?,4,analyst,general,1443,222,2356.03,False
+rightsizing,Which department has the fewest employees?,1,analyst,general,1229,65,716.54,False
+rightsizing,Which department has the fewest employees?,2,sql_specialist,sql,1546,209,2130.46,False
+rightsizing,Which department has the fewest employees?,3,sql_specialist,sql,1821,209,2135.09,False
+rightsizing,Which department has the fewest employees?,4,sql_specialist,sql,2173,29,546.85,False
+rightsizing,Which department has the fewest employees?,5,analyst,general,1360,81,702.05,False

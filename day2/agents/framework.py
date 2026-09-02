@@ -20,7 +20,14 @@ UI streaming support:
 """
 import json
 import os
+import sys
+import time
 import httpx
+
+# agentmetrics lives one level up (day2/). Add it to the path so this file
+# works both as a package import (container) and a direct script run (local).
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import agentmetrics as metrics
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8080")
 
@@ -34,15 +41,32 @@ def set_event_sink(fn):
     EVENT_SINK = fn
 
 
-def call_llm(prompt: str, task: str = "general", max_tokens: int = 512) -> str:
-    """All model access goes through the gateway — routing + caching for free."""
+def call_llm(prompt: str, task: str = "general", max_tokens: int = 512,
+             agent: str = "unknown") -> str:
+    """All model access goes through the gateway — routing + caching for free.
+
+    Instrumented: records prompt size, latency, and whether the gateway served
+    this from cache. The gateway already returns `cached` — we were throwing it
+    away, so cache behaviour under agent load was invisible.
+    """
+    t0 = time.perf_counter()
     resp = httpx.post(
         f"{GATEWAY_URL}/v1/chat",
         json={"prompt": prompt, "task": task, "max_tokens": max_tokens},
         timeout=120,
     )
     resp.raise_for_status()
-    return resp.json()["response"]
+    body = resp.json()
+    text = body["response"]
+    metrics.record_call(
+        agent=agent,
+        task=task,
+        prompt_chars=len(prompt),
+        response_chars=len(text),
+        latency_ms=(time.perf_counter() - t0) * 1000,
+        cached=body.get("cached", False),
+    )
+    return text
 
 
 class Tool:
@@ -53,7 +77,14 @@ class Tool:
         self.fn = fn
 
     def invoke(self, argument: str) -> str:
-        return str(self.fn(argument))
+        t0 = time.perf_counter()
+        try:
+            return str(self.fn(argument))
+        finally:
+            metrics.record_tool(
+                tool=self.name,
+                latency_ms=(time.perf_counter() - t0) * 1000,
+            )
 
 
 def _is_error(text: str) -> bool:
@@ -116,7 +147,8 @@ Respond with EXACTLY ONE of:
 TOOL: <tool_name> | <argument>
 FINAL: <your complete answer>"""
 
-            reply = call_llm(prompt, task=self.task_type).strip()
+            reply = call_llm(prompt, task=self.task_type,
+                             agent=self.name).strip()
 
             # Lenient parse: a FINAL anywhere wins — models sometimes emit
             # both a TOOL line and a FINAL line in one reply.
